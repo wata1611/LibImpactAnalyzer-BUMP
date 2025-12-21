@@ -26,6 +26,21 @@ public class CompilationErrorAutoFixer {
     /** メトリクスデータのリスト */
     private final List<FixMetrics> metricsList;
     
+    /** 総反復回数 */
+    private int totalIterations;
+    
+    /** 修正されたメインコードファイルのセット */
+    private final Set<String> allModifiedMainFiles;
+    
+    /** 修正されたテストコードファイルのセット */
+    private final Set<String> allModifiedTestFiles;
+    
+    /** メインコード累積削除行数 */
+    private int totalMainDeletedLines;
+    
+    /** テストコード累積削除行数 */
+    private int totalTestDeletedLines;
+    
     /**
      * コンストラクタ
      * 必要なコンポーネントを初期化
@@ -34,6 +49,11 @@ public class CompilationErrorAutoFixer {
         this.commandExecutor = new MavenCommandExecutor();
         this.sourceCodeFixer = new SourceCodeFixer();
         this.metricsList = new ArrayList<>();
+        this.totalIterations = 0;
+        this.allModifiedMainFiles = new HashSet<>();
+        this.allModifiedTestFiles = new HashSet<>();
+        this.totalMainDeletedLines = 0;
+        this.totalTestDeletedLines = 0;
     }
     
     /**
@@ -66,10 +86,11 @@ public class CompilationErrorAutoFixer {
         // テスト実行とメトリクス収集
         System.out.println("\n===== Running Tests =====");
         FixMetrics finalMetrics = collectFinalMetrics();
-        metricsList.add(finalMetrics);
         
-        // CSV出力
-        CsvWriter.writeMetrics(metricsList);
+        // CSV出力（最終結果のみ）
+        List<FixMetrics> finalMetricsList = new ArrayList<>();
+        finalMetricsList.add(finalMetrics);
+        CsvWriter.writeMetrics(finalMetricsList);
         
         // 最終結果の表示
         if (mainCodeSuccess && testCodeSuccess) {
@@ -135,16 +156,10 @@ public class CompilationErrorAutoFixer {
                 }
             }
 
-            // メトリクスを記録
-            FixMetrics metrics = new FixMetrics();
-            metrics.setIteration(iteration);
-            metrics.setMainCodeTotalLines(mainCodeTotalLines);
-            metrics.setMainCodeDeletedLines(mainCodeDeletedLines);
-            metrics.setMainCodeModifiedFiles(modifiedMainFiles.size());
-            for (String fileName : modifiedMainFiles) {
-                metrics.addModifiedMainFile(fileName);
-            }
-            metricsList.add(metrics);
+            // 累積データを更新
+            totalMainDeletedLines += mainCodeDeletedLines;
+            allModifiedMainFiles.addAll(modifiedMainFiles);
+            totalIterations = iteration;
 
             // 修正されたファイルがない場合は処理を終了
             if (modifiedMainFiles.isEmpty()) {
@@ -213,24 +228,10 @@ public class CompilationErrorAutoFixer {
                 }
             }
 
-            // メトリクスを記録（既存のメトリクスに追加または新規作成）
-            FixMetrics metrics;
-            if (!metricsList.isEmpty() && metricsList.get(metricsList.size() - 1).getIteration() == iteration) {
-                // メインコードと同じ反復の場合は既存のメトリクスを更新
-                metrics = metricsList.get(metricsList.size() - 1);
-            } else {
-                // 新規メトリクスを作成
-                metrics = new FixMetrics();
-                metrics.setIteration(iteration);
-                metricsList.add(metrics);
-            }
-            
-            metrics.setTestCodeTotalLines(testCodeTotalLines);
-            metrics.setTestCodeDeletedLines(testCodeDeletedLines);
-            metrics.setTestCodeModifiedFiles(modifiedTestFiles.size());
-            for (String fileName : modifiedTestFiles) {
-                metrics.addModifiedTestFile(fileName);
-            }
+            // 累積データを更新
+            totalTestDeletedLines += testCodeDeletedLines;
+            allModifiedTestFiles.addAll(modifiedTestFiles);
+            totalIterations = Math.max(totalIterations, iteration);
 
             // 修正されたファイルがない場合は処理を終了
             if (modifiedTestFiles.isEmpty()) {
@@ -251,10 +252,8 @@ public class CompilationErrorAutoFixer {
     private FixMetrics collectFinalMetrics() throws Exception {
         FixMetrics finalMetrics = new FixMetrics();
         
-        // 反復回数は最後のメトリクスから取得
-        if (!metricsList.isEmpty()) {
-            finalMetrics.setIteration(metricsList.get(metricsList.size() - 1).getIteration());
-        }
+        // 総反復回数を記録
+        finalMetrics.setIteration(totalIterations);
         
         // 最終的なコード行数を記録
         int mainCodeTotalLines = LineCounter.countTotalLines(ApplicationConfig.getAllSrcDirs());
@@ -263,20 +262,8 @@ public class CompilationErrorAutoFixer {
         finalMetrics.setTestCodeTotalLines(testCodeTotalLines);
         
         // 累積削除行数と修正ファイルを記録
-        int totalMainDeleted = 0;
-        int totalTestDeleted = 0;
-        Set<String> allModifiedMainFiles = new HashSet<>();
-        Set<String> allModifiedTestFiles = new HashSet<>();
-        
-        for (FixMetrics metrics : metricsList) {
-            totalMainDeleted += metrics.getMainCodeDeletedLines();
-            totalTestDeleted += metrics.getTestCodeDeletedLines();
-            allModifiedMainFiles.addAll(metrics.getModifiedMainFiles());
-            allModifiedTestFiles.addAll(metrics.getModifiedTestFiles());
-        }
-        
-        finalMetrics.setMainCodeDeletedLines(totalMainDeleted);
-        finalMetrics.setTestCodeDeletedLines(totalTestDeleted);
+        finalMetrics.setMainCodeDeletedLines(totalMainDeletedLines);
+        finalMetrics.setTestCodeDeletedLines(totalTestDeletedLines);
         finalMetrics.setMainCodeModifiedFiles(allModifiedMainFiles.size());
         finalMetrics.setTestCodeModifiedFiles(allModifiedTestFiles.size());
         
