@@ -146,4 +146,70 @@ public class MavenCommandExecutor {
 
         return errorFiles;
     }
+    
+    /**
+     * テストを実行してテスト結果を解析
+     * "mvn test" コマンドを実行
+     * 
+     * @param metrics テスト結果を格納するメトリクスオブジェクト
+     * @throws Exception テスト実行時のエラー
+     */
+    public void runTests(FixMetrics metrics) throws Exception {
+        // Mavenテストコマンドを構築
+        ProcessBuilder pb = new ProcessBuilder(ApplicationConfig.getMavenCmd(), "test");
+        pb.directory(new File(ApplicationConfig.PROJECT_DIR));
+        pb.redirectErrorStream(true);
+
+        // 開始時刻を記録
+        long startTime = System.currentTimeMillis();
+
+        // プロセスを開始
+        Process process = pb.start();
+        BufferedReader reader = new BufferedReader(
+            new InputStreamReader(process.getInputStream(), "MS932")
+        );
+
+        // テスト結果のサマリーを検出する正規表現パターン
+        // 例: Tests run: 10, Failures: 2, Errors: 1, Skipped: 0
+        Pattern summaryPattern = Pattern.compile("Tests run: (\\d+), Failures: (\\d+), Errors: (\\d+), Skipped: (\\d+)");
+        
+        // 失敗したテストケースを検出する正規表現パターン
+        // 例: testMethod(com.example.TestClass)
+        Pattern failedTestPattern = Pattern.compile("^\\s*(\\S+)\\(([^)]+)\\).*?<<< FAILURE!|<<< ERROR!");
+
+        String line;
+        while ((line = reader.readLine()) != null) {
+            // テスト結果サマリーのチェック
+            Matcher summaryMatcher = summaryPattern.matcher(line);
+            if (summaryMatcher.find()) {
+                int testsRun = Integer.parseInt(summaryMatcher.group(1));
+                int failures = Integer.parseInt(summaryMatcher.group(2));
+                int errors = Integer.parseInt(summaryMatcher.group(3));
+                int skipped = Integer.parseInt(summaryMatcher.group(4));
+                
+                // 最後に見つかったサマリーを使用（モジュールごとに出力される場合があるため）
+                metrics.setTestsRun(testsRun);
+                metrics.setFailures(failures);
+                metrics.setErrors(errors);
+                metrics.setSkipped(skipped);
+            }
+            
+            // 失敗したテストケースのチェック
+            Matcher failedTestMatcher = failedTestPattern.matcher(line);
+            if (failedTestMatcher.find()) {
+                String testMethod = failedTestMatcher.group(1);
+                String testClass = failedTestMatcher.group(2);
+                String testCase = testClass + "." + testMethod;
+                metrics.addFailedTestCase(testCase);
+            }
+        }
+
+        // プロセスの終了を待機
+        process.waitFor();
+
+        // 終了時刻を記録
+        long endTime = System.currentTimeMillis();
+        double executionTime = (endTime - startTime) / 1000.0;
+        metrics.setExecutionTime(executionTime);
+    }
 }

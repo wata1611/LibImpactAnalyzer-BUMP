@@ -25,15 +25,16 @@ public class SourceCodeFixer {
      * 
      * @param file 修正対象のファイル
      * @param compilationError エラー情報（エラー行番号など）
-     * @return 修正が行われた場合true、そうでない場合false
+     * @return 削除された行数
      */
-    public boolean fixErrorFile(File file, CompilationError compilationError) {
+    public int fixErrorFile(File file, CompilationError compilationError) {
         try {
             // ファイル修正開始のヘッダー表示
             System.out.println("\n--- " + compilationError.getFileName() + " の修正処理開始 ---");
             
-            // ファイルがテストコードかどうかを判定（testsディレクトリに含まれるか）
-            boolean isTestFile = compilationError.getFilePath().contains("\\tests\\");
+            // ファイルがテストコードかどうかを判定（test/javaディレクトリに含まれるか）
+            boolean isTestFile = compilationError.getFilePath().contains("\\test\\java\\") || 
+                                compilationError.getFilePath().contains("/test/java/");
 
             // Spoon Launcherの初期化と設定
             Launcher launcher = new Launcher();
@@ -101,11 +102,11 @@ public class SourceCodeFixer {
                 System.out.println("修正不要: " + compilationError.getFileName());
             }
 
-            return modified;
+            return deletedElementCount;
 
         } catch (Exception e) {
             System.err.println("Error processing file: " + compilationError.getFileName() + " - " + e.getMessage());
-            return false;
+            return 0;
         }
     }
     
