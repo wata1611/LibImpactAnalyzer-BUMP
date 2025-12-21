@@ -8,7 +8,6 @@
   <version>0.0.1-SNAPSHOT</version>
 
   <name>LibImpactAnalyzer-BUMP</name>
-  <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
 
   <properties>
@@ -34,29 +33,26 @@
       <artifactId>junit-jupiter-api</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- Optionally: parameterized tests support -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- Spoon-->
+    <!-- Spoon -->
     <dependency>
-    	<groupId>fr.inria.gforge.spoon</groupId>
-    	<artifactId>spoon-core</artifactId>
-    	<version>10.4.2</version>
+      <groupId>fr.inria.gforge.spoon</groupId>
+      <artifactId>spoon-core</artifactId>
+      <version>10.4.2</version>
     </dependency>
   </dependencies>
 
   <build>
-    <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
+    <pluginManagement>
       <plugins>
-        <!-- clean lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->
         <plugin>
           <artifactId>maven-clean-plugin</artifactId>
           <version>3.4.0</version>
         </plugin>
-        <!-- default lifecycle, jar packaging: see https://maven.apache.org/ref/current/maven-core/default-bindings.html#Plugin_bindings_for_jar_packaging -->
         <plugin>
           <artifactId>maven-resources-plugin</artifactId>
           <version>3.3.1</version>
@@ -81,7 +77,6 @@
           <artifactId>maven-deploy-plugin</artifactId>
           <version>3.1.2</version>
         </plugin>
-        <!-- site lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#site_Lifecycle -->
         <plugin>
           <artifactId>maven-site-plugin</artifactId>
           <version>3.12.1</version>
@@ -90,31 +85,46 @@
           <artifactId>maven-project-info-reports-plugin</artifactId>
           <version>3.6.1</version>
         </plugin>
-        <!-- 実行可能JAR作成プラグイン（依存ライブラリ込み） -->
-        <plugin>
-        	<groupId>org.apache.maven.plugins</groupId>
-    		<artifactId>maven-shade-plugin</artifactId>
-    		<version>3.5.1</version>
-    		<executions>
-    			<execution>
-    				<phase>package</phase>
-    				<goals>
-                		<goal>shade</goal>
-            		</goals>
-            		<configuration>
-            			<!-- メインクラスを指定 -->
-            			<transformers>
-            				<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-            					<mainClass>com.iwata.MavenCompiler.CompilationErrorAutoFixer</mainClass>
-            				</transformer>
-            			</transformers>
-            			<!-- 出力ファイル名を指定 -->
-            			<finalName>compilation-error-auto-fixer</finalName>
-            		</configuration>
-    			</execution>
-    		</executions>
-        </plugin>
       </plugins>
     </pluginManagement>
+    
+    <!-- pluginsセクション: 実際に実行されるプラグイン -->
+    <plugins>
+      <!-- 実行可能JAR作成プラグイン（依存ライブラリ込み） -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.1</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <!-- メインクラスを指定 -->
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>iwata.LibImpactAnalyzer_BUMP.CompilationErrorAutoFixer</mainClass>
+                </transformer>
+              </transformers>
+              <!-- 出力ファイル名を指定 -->
+              <finalName>BUMP-LibImpactAnalyzer</finalName>
+              <!-- 署名ファイルを除外（重要：これがないと署名エラーが発生） -->
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 </project>
