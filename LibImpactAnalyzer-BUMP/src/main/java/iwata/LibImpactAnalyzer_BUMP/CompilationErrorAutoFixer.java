@@ -11,6 +11,7 @@ import java.util.Map;
  * 2. フェーズ2: テストコード（testsディレクトリ）のコンパイルエラーを自動修正
  * 
  * 各フェーズでは最大MAX_ITERATIONS回まで繰り返し修正を試みる
+ * マルチモジュールプロジェクトにも対応
  */
 public class CompilationErrorAutoFixer {
     
@@ -35,6 +36,9 @@ public class CompilationErrorAutoFixer {
      * @throws Exception 処理中のエラー
      */
     public static void main(String[] args) throws Exception {
+        // プロジェクト構成の初期化（マルチモジュール検出）
+        ApplicationConfig.initialize();
+        
         CompilationErrorAutoFixer autoFixer = new CompilationErrorAutoFixer();
         autoFixer.run();
     }

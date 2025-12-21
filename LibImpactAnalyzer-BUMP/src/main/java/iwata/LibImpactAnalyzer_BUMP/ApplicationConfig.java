@@ -1,5 +1,7 @@
 package iwata.LibImpactAnalyzer_BUMP;
 
+import java.util.*;
+
 /**
  * アプリケーション設定を管理するクラス
  * コンパイルエラー修正処理に必要な設定値を定義
@@ -9,13 +11,82 @@ public class ApplicationConfig {
     public static final int MAX_ITERATIONS = 20;
     
     /** 対象プロジェクトのルートディレクトリ */
-    public static final String PROJECT_DIR = "C:\\Users\\cyber\\git\\delete_test\\delete_test";
+    public static final String PROJECT_DIR = "C:\\Users\\cyber\\git\\sorald";
     
-    /** メインコードのソースディレクトリ */
-    public static final String SRC_DIR = PROJECT_DIR + "\\src";
+    /** メインコードのソースディレクトリ（シングルモジュール用） */
+    public static final String SRC_DIR = PROJECT_DIR + "\\src\\main\\java";
     
-    /** テストコードのソースディレクトリ */
-    public static final String TEST_DIR = PROJECT_DIR + "\\tests";
+    /** テストコードのソースディレクトリ（シングルモジュール用） */
+    public static final String TEST_DIR = PROJECT_DIR + "\\src\\test\\java";
+    
+    /** マルチモジュールプロジェクトのモジュール情報 */
+    private static List<ModuleInfo> modules = null;
+    
+    /** マルチモジュールプロジェクトかどうか */
+    private static boolean isMultiModule = false;
+    
+    /**
+     * プロジェクト構成を初期化
+     * pom.xmlを解析してマルチモジュールかどうかを判定
+     */
+    public static void initialize() {
+        modules = PomParser.parseModules(PROJECT_DIR);
+        isMultiModule = !modules.isEmpty();
+        
+        if (isMultiModule) {
+            System.out.println("マルチモジュールモードで動作します");
+        } else {
+            System.out.println("シングルモジュールモードで動作します");
+        }
+    }
+    
+    /**
+     * マルチモジュールプロジェクトかどうかを確認
+     * @return マルチモジュールの場合true
+     */
+    public static boolean isMultiModule() {
+        return isMultiModule;
+    }
+    
+    /**
+     * モジュール情報のリストを取得
+     * @return モジュール情報のリスト
+     */
+    public static List<ModuleInfo> getModules() {
+        return modules != null ? modules : Collections.emptyList();
+    }
+    
+    /**
+     * すべてのソースディレクトリのリストを取得
+     * @return ソースディレクトリのリスト
+     */
+    public static List<String> getAllSrcDirs() {
+        if (isMultiModule) {
+            List<String> dirs = new ArrayList<>();
+            for (ModuleInfo module : modules) {
+                dirs.add(module.getSrcDir());
+            }
+            return dirs;
+        } else {
+            return Collections.singletonList(SRC_DIR);
+        }
+    }
+    
+    /**
+     * すべてのテストディレクトリのリストを取得
+     * @return テストディレクトリのリスト
+     */
+    public static List<String> getAllTestDirs() {
+        if (isMultiModule) {
+            List<String> dirs = new ArrayList<>();
+            for (ModuleInfo module : modules) {
+                dirs.add(module.getTestDir());
+            }
+            return dirs;
+        } else {
+            return Collections.singletonList(TEST_DIR);
+        }
+    }
     
     /**
      * OSに応じた適切なMavenコマンドを取得

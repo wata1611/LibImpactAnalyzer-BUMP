@@ -8,25 +8,36 @@ import java.util.stream.Collectors;
 /**
  * Javaファイル検索のユーティリティクラス
  * プロジェクト内のJavaファイルを検索する機能を提供
+ * マルチモジュールプロジェクトにも対応
  */
 public class JavaFileSearcher {
     
     /**
      * プロジェクト内でJavaファイルを検索
      * srcディレクトリとtestsディレクトリの両方を検索対象とする
+     * マルチモジュールプロジェクトの場合は全モジュールを検索
      * 
      * @param fileName 検索するファイル名（例: "Example.java"）
      * @return ファイルの完全パス。見つからない場合はnull
      */
     public static String findJavaFile(String fileName) {
         // まずsrcディレクトリで検索
-        String foundFile = findJavaFileInDirectory(fileName, ApplicationConfig.SRC_DIR);
-        if (foundFile != null) {
-            return foundFile;
+        for (String srcDir : ApplicationConfig.getAllSrcDirs()) {
+            String foundFile = findJavaFileInDirectory(fileName, srcDir);
+            if (foundFile != null) {
+                return foundFile;
+            }
         }
         
         // srcで見つからなければtestsディレクトリで検索
-        return findJavaFileInDirectory(fileName, ApplicationConfig.TEST_DIR);
+        for (String testDir : ApplicationConfig.getAllTestDirs()) {
+            String foundFile = findJavaFileInDirectory(fileName, testDir);
+            if (foundFile != null) {
+                return foundFile;
+            }
+        }
+        
+        return null;
     }
     
     /**
