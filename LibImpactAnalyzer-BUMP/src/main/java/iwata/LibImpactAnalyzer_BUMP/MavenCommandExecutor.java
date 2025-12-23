@@ -40,6 +40,10 @@ public class MavenCommandExecutor {
         // return文欠如エラーを検出する正規表現パターン
         // 例: [ERROR] Example.java:[15,1] return文が指定されていません
         Pattern missingReturnPattern = Pattern.compile("\\[ERROR\\]\\s+(.+\\.java):\\[(\\d+),\\d+\\]\\s+return文が指定されていません");
+        
+        // Spotlessエラーを検出する正規表現パターン
+        // 例: [ERROR]   src/main/java/org/example/Example.java:L10 palantir-java-format(palantir-java-format) error: '.'がありません
+        Pattern spotlessErrorPattern = Pattern.compile("\\[ERROR\\]\\s+(.+\\.java):L(\\d+)\\s+.*error:");
 
         // コンパイル出力を1行ずつ読み込んで解析
         String line;
@@ -47,6 +51,27 @@ public class MavenCommandExecutor {
             // エラー行のみコンソールに出力
             if (line.contains("[ERROR]")) {
                 System.out.println(line);
+            }
+            
+            // Spotlessエラーのチェック（最優先）
+            Matcher spotlessMatcher = spotlessErrorPattern.matcher(line);
+            if (spotlessMatcher.find()) {
+                String filePath = spotlessMatcher.group(1);
+                int lineNumber = Integer.parseInt(spotlessMatcher.group(2));
+                
+                // パスからファイル名を抽出
+                String fileName = new File(filePath).getName();
+                
+                // ファイルの完全パスを取得
+                String fullPath = JavaFileSearcher.findJavaFile(fileName);
+                if (fullPath != null) {
+                    // CompilationErrorオブジェクトを取得または作成
+                    CompilationError errorInfo = errorFiles.computeIfAbsent(fileName, 
+                        k -> new CompilationError(fileName, fullPath));
+                    errorInfo.addErrorLine(lineNumber);
+                    System.out.println("Spotlessエラー検出: " + fileName + " 行:" + lineNumber);
+                }
+                continue;
             }
             
             // return文欠如エラーのチェック
@@ -115,6 +140,9 @@ public class MavenCommandExecutor {
         
         // エラー行を検出する正規表現パターン
         Pattern errorPattern = Pattern.compile("([^\\\\/:*?\"<>|]+\\.java).*?\\[(\\d+),");
+        
+        // Spotlessエラーを検出する正規表現パターン
+        Pattern spotlessErrorPattern = Pattern.compile("\\[ERROR\\]\\s+(.+\\.java):L(\\d+)\\s+.*error:");
 
         // コンパイル出力を1行ずつ読み込んで解析
         String line;
@@ -122,6 +150,27 @@ public class MavenCommandExecutor {
             // エラー行のみコンソールに出力
             if (line.contains("[ERROR]")) {
                 System.out.println(line);
+            }
+            
+            // Spotlessエラーのチェック（最優先）
+            Matcher spotlessMatcher = spotlessErrorPattern.matcher(line);
+            if (spotlessMatcher.find()) {
+                String filePath = spotlessMatcher.group(1);
+                int lineNumber = Integer.parseInt(spotlessMatcher.group(2));
+                
+                // パスからファイル名を抽出
+                String fileName = new File(filePath).getName();
+                
+                // ファイルの完全パスを取得
+                String fullPath = JavaFileSearcher.findJavaFile(fileName);
+                if (fullPath != null) {
+                    // CompilationErrorオブジェクトを取得または作成
+                    CompilationError errorInfo = errorFiles.computeIfAbsent(fileName, 
+                        k -> new CompilationError(fileName, fullPath));
+                    errorInfo.addErrorLine(lineNumber);
+                    System.out.println("Spotlessエラー検出: " + fileName + " 行:" + lineNumber);
+                }
+                continue;
             }
             
             // コンパイルエラーのチェック
