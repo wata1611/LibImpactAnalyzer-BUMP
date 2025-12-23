@@ -11,7 +11,7 @@ public class ApplicationConfig {
     public static final int MAX_ITERATIONS = 20;
     
     /** 対象プロジェクトのルートディレクトリ */
-    public static final String PROJECT_DIR = "C:\\Users\\cyber\\git\\plexus-archiver";
+    public static final String PROJECT_DIR = "C:\\Users\\cyber\\git\\wicket-crudifier";
     
     /** メインコードのソースディレクトリ(シングルモジュール用) */
     public static final String SRC_DIR = PROJECT_DIR + "\\src\\main\\java";

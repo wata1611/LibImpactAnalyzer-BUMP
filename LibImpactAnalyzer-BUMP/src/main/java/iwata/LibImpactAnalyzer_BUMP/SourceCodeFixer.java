@@ -74,6 +74,14 @@ public class SourceCodeFixer {
                 } else {
                     // 通常のエラー: エラー行の要素を削除
                     for (int lineNum : compilationError.getErrorLines()) {
+                        // クラス宣言エラーのチェック
+                        int classFixCount = fixClassDeclarationError(launcher, model, lineNum);
+                        if (classFixCount > 0) {
+                            modified = true;
+                            deletedElementCount += classFixCount;
+                            continue;  // クラス宣言を修正した場合は通常の削除処理をスキップ
+                        }
+                        
                         // 指定された行番号の要素を検索
                         List<CtElement> targetNodes = model.getElements(e -> {
                             SourcePosition pos = e.getPosition();
@@ -82,6 +90,12 @@ public class SourceCodeFixer {
 
                         // 見つかった要素を削除
                         for (CtElement element : targetNodes) {
+                            // クラス宣言やインターフェース宣言は削除しない（別途処理）
+                            if (element instanceof CtClass || element instanceof CtInterface) {
+                                System.out.println("警告: クラス/インターフェース宣言は削除をスキップ: " + element.getClass().getSimpleName());
+                                continue;
+                            }
+                            
                             // 削除する要素の詳細を出力
                             System.out.println("削除対象要素: " + element.getClass().getSimpleName() + " - " + element.getShortRepresentation());
                             element.delete();
@@ -111,8 +125,62 @@ public class SourceCodeFixer {
 
         } catch (Exception e) {
             System.err.println("Error processing file: " + compilationError.getFileName() + " - " + e.getMessage());
+            e.printStackTrace();
             return 0;
         }
+    }
+    
+    /**
+     * クラス宣言のエラーを修正
+     * extends句やimplements句から存在しないクラス/インターフェースの参照を削除
+     * 
+     * @param launcher Spoon Launcher
+     * @param model ASTモデル
+     * @param lineNum エラー行番号
+     * @return 修正された要素数
+     */
+    private int fixClassDeclarationError(Launcher launcher, CtModel model, int lineNum) {
+        int modifiedCount = 0;
+        
+        // 指定された行にあるクラス/インターフェース宣言を検索
+        List<CtType<?>> types = model.getElements(e -> {
+            if (!(e instanceof CtClass || e instanceof CtInterface)) {
+                return false;
+            }
+            SourcePosition pos = e.getPosition();
+            return pos != null && pos.isValidPosition() && pos.getLine() == lineNum;
+        }).stream()
+        .map(e -> (CtType<?>) e)
+        .collect(Collectors.toList());
+        
+        for (CtType<?> type : types) {
+            System.out.println("クラス宣言エラーを検出: " + type.getSimpleName() + " (行 " + lineNum + ")");
+            
+            // CtClassの場合、superclassを削除
+            if (type instanceof CtClass) {
+                CtClass<?> ctClass = (CtClass<?>) type;
+                CtTypeReference<?> superClass = ctClass.getSuperclass();
+                
+                if (superClass != null && !superClass.getQualifiedName().equals("java.lang.Object")) {
+                    System.out.println("  - スーパークラスを削除: " + superClass.getQualifiedName());
+                    ctClass.setSuperclass(null);
+                    modifiedCount++;
+                }
+            }
+            
+            // implements句の処理（CtClassとCtInterfaceの両方）
+            Set<CtTypeReference<?>> superInterfaces = type.getSuperInterfaces();
+            if (superInterfaces != null && !superInterfaces.isEmpty()) {
+                System.out.println("  - 実装インターフェースを削除: " + superInterfaces.size() + "個");
+                for (CtTypeReference<?> iface : superInterfaces) {
+                    System.out.println("    * " + iface.getQualifiedName());
+                }
+                superInterfaces.clear();
+                modifiedCount++;
+            }
+        }
+        
+        return modifiedCount;
     }
     
     /**
@@ -244,6 +312,13 @@ public class SourceCodeFixer {
         
         // 各エラー行に対して処理
         for (int lineNum : compilationError.getErrorLines()) {
+            // まずクラス宣言エラーをチェック
+            int classFixCount = fixClassDeclarationError(launcher, model, lineNum);
+            if (classFixCount > 0) {
+                modifiedCount += classFixCount;
+                continue;  // クラス宣言エラーの場合はメソッド処理をスキップ
+            }
+            
             for (CtMethod<?> method : methods) {
                 
                 // すでに処理済みのメソッドはスキップ
