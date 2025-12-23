@@ -133,6 +133,7 @@ public class SourceCodeFixer {
     /**
      * クラス宣言のエラーを修正
      * extends句やimplements句から存在しないクラス/インターフェースの参照を削除
+     * 匿名クラスの場合は親のステートメント全体を削除
      * 
      * @param launcher Spoon Launcher
      * @param model ASTモデル
@@ -156,6 +157,51 @@ public class SourceCodeFixer {
         for (CtType<?> type : types) {
             System.out.println("クラス宣言エラーを検出: " + type.getSimpleName() + " (行 " + lineNum + ")");
             
+            // 匿名クラスかどうかをチェック
+            if (type.isAnonymous()) {
+                System.out.println("  - 匿名クラスを検出");
+                
+                // 匿名クラスを含むステートメント全体を削除
+                CtElement parent = type.getParent();
+                
+                // NewClass式を探す
+                while (parent != null && !(parent instanceof CtNewClass)) {
+                    parent = parent.getParent();
+                }
+                
+                if (parent instanceof CtNewClass) {
+                    CtNewClass<?> newClassExpr = (CtNewClass<?>) parent;
+                    
+                    // さらに親のステートメントや代入を探す
+                    CtElement stmtParent = newClassExpr.getParent();
+                    while (stmtParent != null && 
+                           !(stmtParent instanceof CtStatement) && 
+                           !(stmtParent instanceof CtAssignment) &&
+                           !(stmtParent instanceof CtLocalVariable)) {
+                        stmtParent = stmtParent.getParent();
+                    }
+                    
+                    if (stmtParent instanceof CtStatement) {
+                        System.out.println("  - 匿名クラスを含むステートメント全体を削除");
+                        ((CtStatement) stmtParent).delete();
+                        modifiedCount++;
+                        continue;
+                    } else if (stmtParent instanceof CtLocalVariable) {
+                        System.out.println("  - 匿名クラスを含むローカル変数宣言を削除");
+                        ((CtLocalVariable<?>) stmtParent).delete();
+                        modifiedCount++;
+                        continue;
+                    }
+                }
+                
+                // ステートメントが見つからない場合は型自体を削除
+                System.out.println("  - 匿名クラス自体を削除");
+                type.delete();
+                modifiedCount++;
+                continue;
+            }
+            
+            // 通常のクラス/インターフェース宣言の場合
             // CtClassの場合、superclassを削除
             if (type instanceof CtClass) {
                 CtClass<?> ctClass = (CtClass<?>) type;
