@@ -4,11 +4,11 @@ import java.io.File;
 import java.util.*;
 
 /**
- * コンパイルエラー自動修正ツール（メインクラス）
+ * コンパイルエラー自動修正ツール(メインクラス)
  * 
  * 処理の流れ:
- * 1. フェーズ1: メインコード（srcディレクトリ）のコンパイルエラーを自動修正
- * 2. フェーズ2: テストコード（testsディレクトリ）のコンパイルエラーを自動修正
+ * 1. フェーズ1: メインコード(srcディレクトリ)のコンパイルエラーを自動修正
+ * 2. フェーズ2: テストコード(testsディレクトリ)のコンパイルエラーを自動修正
  * 3. テスト実行とメトリクス収集
  * 4. CSV出力
  * 
@@ -17,10 +17,10 @@ import java.util.*;
  */
 public class CompilationErrorAutoFixer {
     
-    /** Mavenコマンド実行（コンパイル実行とエラー抽出） */
+    /** Mavenコマンド実行(コンパイル実行とエラー抽出) */
     private final MavenCommandExecutor commandExecutor;
     
-    /** ソースコード修正（ファイルの自動修正処理） */
+    /** ソースコード修正(ファイルの自動修正処理) */
     private final SourceCodeFixer sourceCodeFixer;
     
     /** メトリクスデータのリスト */
@@ -58,11 +58,11 @@ public class CompilationErrorAutoFixer {
     
     /**
      * アプリケーションのエントリーポイント
-     * @param args コマンドライン引数（未使用）
+     * @param args コマンドライン引数(未使用)
      * @throws Exception 処理中のエラー
      */
     public static void main(String[] args) throws Exception {
-        // プロジェクト構成の初期化（マルチモジュール検出）
+        // プロジェクト構成の初期化(マルチモジュール検出)
         ApplicationConfig.initialize();
         
         CompilationErrorAutoFixer autoFixer = new CompilationErrorAutoFixer();
@@ -71,7 +71,7 @@ public class CompilationErrorAutoFixer {
     
     /**
      * メイン処理
-     * フェーズ1（メインコード）とフェーズ2（テストコード）を順次実行
+     * フェーズ1(メインコード)とフェーズ2(テストコード)を順次実行
      * @throws Exception 処理中のエラー
      */
     public void run() throws Exception {
@@ -87,7 +87,7 @@ public class CompilationErrorAutoFixer {
         System.out.println("\n===== Running Tests =====");
         FixMetrics finalMetrics = collectFinalMetrics();
         
-        // CSV出力（最終結果のみ）
+        // CSV出力(最終結果のみ)
         List<FixMetrics> finalMetricsList = new ArrayList<>();
         finalMetricsList.add(finalMetrics);
         CsvWriter.writeMetrics(finalMetricsList);
@@ -101,7 +101,7 @@ public class CompilationErrorAutoFixer {
     }
     
     /**
-     * フェーズ1: メインコード（srcディレクトリ）のエラー修正処理
+     * フェーズ1: メインコード(srcディレクトリ)のエラー修正処理
      * 
      * 処理の流れ:
      * 1. mvn clean compile を実行してエラーを抽出
@@ -173,7 +173,7 @@ public class CompilationErrorAutoFixer {
     }
     
     /**
-     * フェーズ2: テストコード（testsディレクトリ）のエラー修正処理
+     * フェーズ2: テストコード(testsディレクトリ)のエラー修正処理
      * 
      * 処理の流れ:
      * 1. mvn test-compile を実行してエラーを抽出
@@ -245,7 +245,7 @@ public class CompilationErrorAutoFixer {
     }
     
     /**
-     * 最終的なメトリクスを収集（テスト実行結果を含む）
+     * 最終的なメトリクスを収集(テスト実行結果を含む)
      * @return 最終メトリクス
      * @throws Exception テスト実行時のエラー
      */

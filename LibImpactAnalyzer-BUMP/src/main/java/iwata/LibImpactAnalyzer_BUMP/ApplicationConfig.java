@@ -7,16 +7,16 @@ import java.util.*;
  * コンパイルエラー修正処理に必要な設定値を定義
  */
 public class ApplicationConfig {
-    /** 最大反復回数（コンパイルエラー修正の試行上限） */
+    /** 最大反復回数(コンパイルエラー修正の試行上限) */
     public static final int MAX_ITERATIONS = 20;
     
     /** 対象プロジェクトのルートディレクトリ */
-    public static final String PROJECT_DIR = "C:\\Users\\cyber\\git\\wicket-crudifier";
+    public static final String PROJECT_DIR = "C:\\Users\\cyber\\git\\plexus-archiver";
     
-    /** メインコードのソースディレクトリ（シングルモジュール用） */
+    /** メインコードのソースディレクトリ(シングルモジュール用) */
     public static final String SRC_DIR = PROJECT_DIR + "\\src\\main\\java";
     
-    /** テストコードのソースディレクトリ（シングルモジュール用） */
+    /** テストコードのソースディレクトリ(シングルモジュール用) */
     public static final String TEST_DIR = PROJECT_DIR + "\\src\\test\\java";
     
     /** マルチモジュールプロジェクトのモジュール情報 */
@@ -24,6 +24,9 @@ public class ApplicationConfig {
     
     /** マルチモジュールプロジェクトかどうか */
     private static boolean isMultiModule = false;
+    
+    /** 削除されたインポート文を追跡するマップ (ファイルパス -> インポート文 -> 削除回数) */
+    private static Map<String, Map<String, Integer>> deletedImportsMap = new HashMap<>();
     
     /**
      * プロジェクト構成を初期化
@@ -95,4 +98,38 @@ public class ApplicationConfig {
     public static String getMavenCmd() {
         return System.getProperty("os.name").toLowerCase().contains("win") ? "mvn.cmd" : "mvn";
     }
+    
+    /**
+     * 削除されたインポート文を記録
+     * @param filePath ファイルパス
+     * @param importStatement インポート文
+     */
+    public static void recordDeletedImport(String filePath, String importStatement) {
+        deletedImportsMap.putIfAbsent(filePath, new HashMap<>());
+        Map<String, Integer> importsCount = deletedImportsMap.get(filePath);
+        importsCount.put(importStatement, importsCount.getOrDefault(importStatement, 0) + 1);
+    }
+    
+    /**
+     * 2回以上削除されたインポート文を取得
+     * @param filePath ファイルパス
+     * @return 2回以上削除されたインポート文のセット
+     */
+    public static Set<String> getRepeatedlyDeletedImports(String filePath) {
+        if (!deletedImportsMap.containsKey(filePath)) {
+            return Collections.emptySet();
+        }
+        
+        Set<String> repeatedImports = new HashSet<>();
+        Map<String, Integer> importsCount = deletedImportsMap.get(filePath);
+        
+        for (Map.Entry<String, Integer> entry : importsCount.entrySet()) {
+            if (entry.getValue() >= 2) {
+                repeatedImports.add(entry.getKey());
+            }
+        }
+        
+        return repeatedImports;
+    }
+    
 }

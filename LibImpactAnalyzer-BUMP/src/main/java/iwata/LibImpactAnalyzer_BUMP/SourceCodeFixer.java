@@ -10,7 +10,9 @@ import spoon.reflect.reference.CtTypeReference;
 import spoon.support.sniper.SniperJavaPrettyPrinter;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.util.*;
+import java.util.regex.*;
 import java.util.stream.Collectors;
 
 /**
@@ -24,7 +26,7 @@ public class SourceCodeFixer {
      * エラーが発生したファイルを修正する
      * 
      * @param file 修正対象のファイル
-     * @param compilationError エラー情報（エラー行番号など）
+     * @param compilationError エラー情報(エラー行番号など)
      * @return 削除された行数
      */
     public int fixErrorFile(File file, CompilationError compilationError) {
@@ -32,7 +34,10 @@ public class SourceCodeFixer {
             // ファイル修正開始のヘッダー表示
             System.out.println("\n--- " + compilationError.getFileName() + " の修正処理開始 ---");
             
-            // ファイルがテストコードかどうかを判定（test/javaディレクトリに含まれるか）
+            // 2回以上削除されたインポートを事前に削除
+            removeRepeatedlyDeletedImports(file, compilationError.getFilePath());
+            
+            // ファイルがテストコードかどうかを判定(test/javaディレクトリに含まれるか)
             boolean isTestFile = compilationError.getFilePath().contains("\\test\\java\\") || 
                                 compilationError.getFilePath().contains("/test/java/");
 
@@ -107,6 +112,54 @@ public class SourceCodeFixer {
         } catch (Exception e) {
             System.err.println("Error processing file: " + compilationError.getFileName() + " - " + e.getMessage());
             return 0;
+        }
+    }
+    
+    /**
+     * 2回以上削除されたインポート文を事前に削除
+     * 
+     * @param file 対象ファイル
+     * @param filePath ファイルパス
+     * @throws IOException ファイル読み書きエラー
+     */
+    private void removeRepeatedlyDeletedImports(File file, String filePath) throws IOException {
+        Set<String> repeatedImports = ApplicationConfig.getRepeatedlyDeletedImports(filePath);
+        
+        if (repeatedImports.isEmpty()) {
+            return;
+        }
+        
+        System.out.println("事前削除対象のインポート数: " + repeatedImports.size());
+        
+        // ファイルの内容を読み込み
+        List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+        List<String> newLines = new ArrayList<>();
+        boolean fileModified = false;
+        
+        // import文のパターン
+        Pattern importPattern = Pattern.compile("^\\s*import\\s+(.+);\\s*$");
+        
+        for (String line : lines) {
+            Matcher matcher = importPattern.matcher(line);
+            
+            if (matcher.matches()) {
+                String importStatement = matcher.group(1).trim();
+                
+                // 繰り返し削除されたインポートかチェック
+                if (repeatedImports.contains(importStatement)) {
+                    System.out.println("事前削除: import " + importStatement + ";");
+                    fileModified = true;
+                    continue;  // この行はスキップ(削除)
+                }
+            }
+            
+            newLines.add(line);
+        }
+        
+        // ファイルが修正された場合、書き戻す
+        if (fileModified) {
+            Files.write(file.toPath(), newLines, StandardCharsets.UTF_8);
+            System.out.println("繰り返し削除されたインポートを事前削除しました");
         }
     }
     
@@ -217,7 +270,7 @@ public class SourceCodeFixer {
                             method.setBody(body);
                         }
                         
-                        // Assert.fail文を挿入（試行）
+                        // Assert.fail文を挿入(試行)
                         try {
                             CtStatement failStatement = launcher.getFactory().Code()
                                 .createCodeSnippetStatement(
@@ -275,7 +328,15 @@ public class SourceCodeFixer {
                 SourcePosition pos = ctImport.getPosition();
                 if (pos != null && pos.isValidPosition() && 
                     compilationError.getErrorLines().contains(pos.getLine())) {
-                    System.out.println("削除対象import文: " + ctImport.toString().trim());
+                    String importStatement = ctImport.toString().trim();
+                    System.out.println("削除対象import文: " + importStatement);
+                    
+                    // インポート文を記録(統計用)
+                    String importedType = extractImportedType(importStatement);
+                    if (importedType != null) {
+                        ApplicationConfig.recordDeletedImport(compilationError.getFilePath(), importedType);
+                    }
+                    
                     importsToRemove.add(ctImport);
                     importCount++;
                 }
@@ -294,6 +355,25 @@ public class SourceCodeFixer {
         }
         
         return importCount;
+    }
+    
+    /**
+     * import文から実際のインポート対象を抽出
+     * 例: "import java.util.List;" -> "java.util.List"
+     * 
+     * @param importStatement import文の文字列
+     * @return インポート対象のクラス/パッケージ名
+     */
+    private String extractImportedType(String importStatement) {
+        // "import " と ";" を除去
+        Pattern pattern = Pattern.compile("import\\s+(?:static\\s+)?([^;]+);?");
+        Matcher matcher = pattern.matcher(importStatement);
+        
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        
+        return null;
     }
     
     /**
