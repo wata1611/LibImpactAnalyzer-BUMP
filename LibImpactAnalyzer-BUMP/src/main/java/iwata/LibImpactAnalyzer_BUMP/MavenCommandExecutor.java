@@ -39,7 +39,9 @@ public class MavenCommandExecutor {
         
         // return文欠如エラーを検出する正規表現パターン
         // 例: [ERROR] Example.java:[15,1] return文が指定されていません
-        Pattern missingReturnPattern = Pattern.compile("\\[ERROR\\]\\s+(.+\\.java):\\[(\\d+),\\d+\\]\\s+return文が指定されていません");
+        Pattern missingReturnPattern = Pattern.compile(
+        	    "\\[ERROR\\]\\s+(.+\\.java):\\[(\\d+),\\d+\\]\\s+(return文が指定されていません|missing return statement)"
+        	);
         
         // Spotlessエラーを検出する正規表現パターン
         // 例: [ERROR]   src/main/java/org/example/Example.java:L10 palantir-java-format(palantir-java-format) error: '.'がありません
