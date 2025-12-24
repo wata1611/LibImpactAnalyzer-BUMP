@@ -62,6 +62,8 @@ public class CompilationErrorAutoFixer {
      * @throws Exception 処理中のエラー
      */
     public static void main(String[] args) throws Exception {
+    	// コマンドライン引数から設定を初期化（CSV出力先パスとプロジェクトディレクトリ）
+        ApplicationConfig.initializeFromArgs(args);
         // プロジェクト構成の初期化(マルチモジュール検出)
         ApplicationConfig.initialize();
         

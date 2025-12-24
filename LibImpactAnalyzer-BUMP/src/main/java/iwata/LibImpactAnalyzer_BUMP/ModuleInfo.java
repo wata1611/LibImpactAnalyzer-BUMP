@@ -25,8 +25,8 @@ public class ModuleInfo {
     public ModuleInfo(String moduleName, String moduleDir) {
         this.moduleName = moduleName;
         this.moduleDir = moduleDir;
-        this.srcDir = moduleDir + "\\src\\main\\java";
-        this.testDir = moduleDir + "\\src\\test\\java";
+        this.srcDir = moduleDir + "/src/main/java";
+        this.testDir = moduleDir + "/src/test/java";
     }
     
     public String getModuleName() {

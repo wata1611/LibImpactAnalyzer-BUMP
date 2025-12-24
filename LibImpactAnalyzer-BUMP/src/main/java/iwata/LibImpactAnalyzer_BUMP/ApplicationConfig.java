@@ -11,13 +11,16 @@ public class ApplicationConfig {
     public static final int MAX_ITERATIONS = 20;
     
     /** 対象プロジェクトのルートディレクトリ */
-    public static final String PROJECT_DIR = "C:\\Users\\cyber\\git\\sorald";
+    public static String PROJECT_DIR;
+    
+    /** CSV出力先ファイルパス */
+    public static String CSV_OUTPUT_PATH = null;
     
     /** メインコードのソースディレクトリ(シングルモジュール用) */
-    public static final String SRC_DIR = PROJECT_DIR + "\\src\\main\\java";
+    public static String SRC_DIR;
     
     /** テストコードのソースディレクトリ(シングルモジュール用) */
-    public static final String TEST_DIR = PROJECT_DIR + "\\src\\test\\java";
+    public static String TEST_DIR;
     
     /** マルチモジュールプロジェクトのモジュール情報 */
     private static List<ModuleInfo> modules = null;
@@ -27,6 +30,33 @@ public class ApplicationConfig {
     
     /** 削除されたインポート文を追跡するマップ (ファイルパス -> インポート文 -> 削除回数) */
     private static Map<String, Map<String, Integer>> deletedImportsMap = new HashMap<>();
+    
+    /**
+     * コマンドライン引数から設定を初期化
+     * @param args コマンドライン引数
+     */
+    public static void initializeFromArgs(String[] args) {
+        // 引数からCSV出力先パスを取得
+        if (args.length > 0) {
+            CSV_OUTPUT_PATH = args[0];
+            System.out.println("CSV output path: " + CSV_OUTPUT_PATH);
+        }
+        
+        // 環境変数からプロジェクトディレクトリを取得
+        String projectRootEnv = System.getenv("PROJECT_ROOT");
+        if (projectRootEnv != null && !projectRootEnv.isEmpty()) {
+            PROJECT_DIR = projectRootEnv;
+            System.out.println("Project directory (from PROJECT_ROOT): " + PROJECT_DIR);
+        } else {
+            // 環境変数が設定されていない場合はカレントディレクトリを使用
+            PROJECT_DIR = System.getProperty("user.dir");
+            System.out.println("Project directory (current directory): " + PROJECT_DIR);
+        }
+        
+        // ソースディレクトリのパスを設定
+        SRC_DIR = PROJECT_DIR + "/src/main/java";
+        TEST_DIR = PROJECT_DIR + "/src/test/java";
+    }
     
     /**
      * プロジェクト構成を初期化

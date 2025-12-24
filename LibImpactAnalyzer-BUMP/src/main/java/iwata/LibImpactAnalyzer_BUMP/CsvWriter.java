@@ -10,8 +10,7 @@ import java.util.*;
  */
 public class CsvWriter {
     
-    /** CSV出力先ディレクトリ */
-    private static final String OUTPUT_DIR = ApplicationConfig.PROJECT_DIR + File.separator + "metrics";
+    
     
     /**
      * メトリクスデータをCSVファイルに出力
@@ -19,17 +18,26 @@ public class CsvWriter {
      * @throws IOException ファイル書き込みエラー
      */
     public static void writeMetrics(List<FixMetrics> metricsList) throws IOException {
-        // 出力ディレクトリの作成
-        File dir = new File(OUTPUT_DIR);
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
+    	File csvFile;
         
-        // ファイル名にタイムスタンプを付加
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
-        String timestamp = dateFormat.format(new Date());
-        String fileName = "fix_metrics_" + timestamp + ".csv";
-        File csvFile = new File(dir, fileName);
+        // CSV出力先パスが指定されている場合はそれを使用
+        if (ApplicationConfig.CSV_OUTPUT_PATH != null && !ApplicationConfig.CSV_OUTPUT_PATH.isEmpty()) {
+            csvFile = new File(ApplicationConfig.CSV_OUTPUT_PATH);
+            
+            // 親ディレクトリが存在しない場合は作成
+            File parentDir = csvFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+        } else {
+            // 指定されていない場合はプロジェクトディレクトリ配下のmetricsフォルダに出力
+            File dir = new File(ApplicationConfig.PROJECT_DIR + "/metrics");
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            
+            csvFile = new File(dir, "fix_metrics.csv");
+        }
         
         // CSV書き込み
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(
