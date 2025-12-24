@@ -139,7 +139,7 @@ public class MavenCommandExecutor {
         Map<String, CompilationError> errorFiles = new HashMap<>();
         
         // エラー行を検出する正規表現パターン
-        Pattern errorPattern = Pattern.compile("([^\\\\/:*?\"<>|]+\\.java).*?\\[(\\d+),");
+        Pattern errorPattern = Pattern.compile("\\[ERROR\\]\\s+(.+\\.java):\\[(\\d+),(\\d+)\\]");
         
         // Spotlessエラーを検出する正規表現パターン
         Pattern spotlessErrorPattern = Pattern.compile("\\[ERROR\\]\\s+(.+\\.java):L(\\d+)\\s+.*error:");
