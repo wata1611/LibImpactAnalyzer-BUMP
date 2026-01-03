@@ -16,6 +16,9 @@ public class ApplicationConfig {
     /** CSV出力先ファイルパス */
     public static String CSV_OUTPUT_PATH = null;
     
+    /** 修正ファイル出力先ディレクトリ */
+    public static String OUTPUT_DIR;
+    
     /** メインコードのソースディレクトリ(シングルモジュール用) */
     public static String SRC_DIR;
     
@@ -56,6 +59,22 @@ public class ApplicationConfig {
         // ソースディレクトリのパスを設定
         SRC_DIR = PROJECT_DIR + "/src/main/java";
         TEST_DIR = PROJECT_DIR + "/src/test/java";
+        
+        // 出力ディレクトリのパスを設定
+        // コンテナ環境では /output にマウントされる想定
+        // CSV_OUTPUT_PATHが指定されている場合はその親ディレクトリを使用
+        if (CSV_OUTPUT_PATH != null && !CSV_OUTPUT_PATH.isEmpty()) {
+            java.io.File csvFile = new java.io.File(CSV_OUTPUT_PATH);
+            java.io.File parentDir = csvFile.getParentFile();
+            if (parentDir != null) {
+                OUTPUT_DIR = parentDir.getAbsolutePath();
+            } else {
+                OUTPUT_DIR = "/output";
+            }
+        } else {
+            OUTPUT_DIR = "/output";
+        }
+        System.out.println("Output directory: " + OUTPUT_DIR);
     }
     
     /**

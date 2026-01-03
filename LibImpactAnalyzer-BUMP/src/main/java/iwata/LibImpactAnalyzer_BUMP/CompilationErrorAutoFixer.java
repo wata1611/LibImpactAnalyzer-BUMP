@@ -41,6 +41,9 @@ public class CompilationErrorAutoFixer {
     /** テストコード累積削除行数 */
     private int totalTestDeletedLines;
     
+    /** 現在のループ番号（メインコードとテストコードで連番） */
+    private int currentLoopNumber;
+    
     /**
      * コンストラクタ
      * 必要なコンポーネントを初期化
@@ -54,6 +57,7 @@ public class CompilationErrorAutoFixer {
         this.allModifiedTestFiles = new HashSet<>();
         this.totalMainDeletedLines = 0;
         this.totalTestDeletedLines = 0;
+        this.currentLoopNumber = 0;
     }
     
     /**
@@ -119,7 +123,8 @@ public class CompilationErrorAutoFixer {
         
         // 最大反復回数まで繰り返す
         while (iteration <= ApplicationConfig.MAX_ITERATIONS) {
-            System.out.println("\n--- Main Code Loop: " + iteration + " ---");
+            currentLoopNumber++;
+            System.out.println("\n--- Main Code Loop: " + iteration + " (Global Loop: " + currentLoopNumber + ") ---");
 
             // 反復開始時のメインコード総行数を記録
             int mainCodeTotalLines = LineCounter.countTotalLines(ApplicationConfig.getAllSrcDirs());
@@ -150,8 +155,8 @@ public class CompilationErrorAutoFixer {
                     continue;
                 }
 
-                // ファイルを修正
-                int deletedLines = sourceCodeFixer.fixErrorFile(file, compilationError);
+                // ファイルを修正（ループ番号を渡す）
+                int deletedLines = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber);
                 if (deletedLines > 0) {
                     mainCodeDeletedLines += deletedLines;
                     modifiedMainFiles.add(compilationError.getFileName());
@@ -191,7 +196,8 @@ public class CompilationErrorAutoFixer {
         
         // 最大反復回数まで繰り返す
         while (iteration <= ApplicationConfig.MAX_ITERATIONS) {
-            System.out.println("\n--- Test Code Loop: " + iteration + " ---");
+            currentLoopNumber++;
+            System.out.println("\n--- Test Code Loop: " + iteration + " (Global Loop: " + currentLoopNumber + ") ---");
 
             // 反復開始時のテストコード総行数を記録
             int testCodeTotalLines = LineCounter.countTotalLines(ApplicationConfig.getAllTestDirs());
@@ -222,8 +228,8 @@ public class CompilationErrorAutoFixer {
                     continue;
                 }
 
-                // ファイルを修正
-                int deletedLines = sourceCodeFixer.fixErrorFile(file, compilationError);
+                // ファイルを修正（ループ番号を渡す）
+                int deletedLines = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber);
                 if (deletedLines > 0) {
                     testCodeDeletedLines += deletedLines;
                     modifiedTestFiles.add(compilationError.getFileName());
