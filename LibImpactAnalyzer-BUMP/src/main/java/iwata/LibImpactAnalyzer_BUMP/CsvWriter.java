@@ -22,12 +22,30 @@ public class CsvWriter {
         
         // CSV出力先パスが指定されている場合はそれを使用
         if (ApplicationConfig.CSV_OUTPUT_PATH != null && !ApplicationConfig.CSV_OUTPUT_PATH.isEmpty()) {
-            csvFile = new File(ApplicationConfig.CSV_OUTPUT_PATH);
-            
-            // 親ディレクトリが存在しない場合は作成
-            File parentDir = csvFile.getParentFile();
-            if (parentDir != null && !parentDir.exists()) {
-                parentDir.mkdirs();
+            // SHAディレクトリ配下に出力
+            if (ApplicationConfig.SHA != null && !ApplicationConfig.SHA.isEmpty()) {
+                // SHAディレクトリを作成
+                String shaDir = ApplicationConfig.OUTPUT_DIR + "/" + ApplicationConfig.SHA;
+                File shaDirFile = new File(shaDir);
+                if (!shaDirFile.exists()) {
+                    shaDirFile.mkdirs();
+                }
+                
+                // CSVファイル名を取得（元のパスからファイル名のみ抽出）
+                File originalCsvFile = new File(ApplicationConfig.CSV_OUTPUT_PATH);
+                String csvFileName = originalCsvFile.getName();
+                
+                // SHAディレクトリ配下にCSVファイルを配置
+                csvFile = new File(shaDirFile, csvFileName);
+            } else {
+                // SHAが取得できない場合は元のパスを使用
+                csvFile = new File(ApplicationConfig.CSV_OUTPUT_PATH);
+                
+                // 親ディレクトリが存在しない場合は作成
+                File parentDir = csvFile.getParentFile();
+                if (parentDir != null && !parentDir.exists()) {
+                    parentDir.mkdirs();
+                }
             }
         } else {
             // 指定されていない場合はプロジェクトディレクトリ配下のmetricsフォルダに出力

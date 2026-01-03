@@ -146,8 +146,14 @@ public class SourceCodeFixer {
      * @throws IOException ファイル操作エラー
      */
     private void saveToLoopDirectory(File file, String originalFilePath, int loopNumber, boolean isTestFile) throws IOException {
-        // ループディレクトリを作成 (例: /output/loop1, /output/loop2, ...)
-        String loopDirPath = ApplicationConfig.OUTPUT_DIR + "/loop" + loopNumber;
+        // SHA ディレクトリを作成 (例: /output/3ff575ae...)
+        String shaDir = ApplicationConfig.OUTPUT_DIR;
+        if (ApplicationConfig.SHA != null && !ApplicationConfig.SHA.isEmpty()) {
+            shaDir = ApplicationConfig.OUTPUT_DIR + "/" + ApplicationConfig.SHA;
+        }
+        
+        // ループディレクトリを作成 (例: /output/3ff575ae.../loop1, /output/3ff575ae.../loop2, ...)
+        String loopDirPath = shaDir + "/loop" + loopNumber;
         File loopDir = new File(loopDirPath);
         if (!loopDir.exists()) {
             boolean created = loopDir.mkdirs();
@@ -156,66 +162,16 @@ public class SourceCodeFixer {
             }
         }
         
-        // 元のファイルのパッケージ構造を維持するため、相対パスを計算
-        String relativePath = calculateRelativePath(originalFilePath, isTestFile);
+        // ファイル名のみを取得
+        String fileName = new File(originalFilePath).getName();
         
-        // 出力先のファイルパスを構築
-        File outputFile = new File(loopDir, relativePath);
-        
-        // 親ディレクトリを作成
-        File outputParentDir = outputFile.getParentFile();
-        if (outputParentDir != null && !outputParentDir.exists()) {
-            outputParentDir.mkdirs();
-        }
+        // 出力先のファイルパスを構築（ループディレクトリ直下にファイル名のみ）
+        File outputFile = new File(loopDir, fileName);
         
         // ファイルをコピー
         Files.copy(file.toPath(), outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         
         System.out.println("  → 保存先: " + outputFile.getAbsolutePath());
-    }
-    
-    /**
-     * 元のファイルパスから相対パスを計算
-     * 
-     * @param originalFilePath 元のファイルパス
-     * @param isTestFile テストファイルかどうか
-     * @return パッケージ構造を含む相対パス
-     */
-    private String calculateRelativePath(String originalFilePath, boolean isTestFile) {
-        // パスの区切り文字を統一
-        String normalizedPath = originalFilePath.replace("\\", "/");
-        
-        // src/main/java または src/test/java 以降のパスを抽出
-        String searchString = isTestFile ? "/src/test/java/" : "/src/main/java/";
-        int index = normalizedPath.indexOf(searchString);
-        
-        if (index >= 0) {
-            // src/main/java/ または src/test/java/ 以降を相対パスとする
-            String relativePath = normalizedPath.substring(index + searchString.length());
-            
-            // テストファイルの場合はtestプレフィックスを付ける
-            if (isTestFile) {
-                return "test/" + relativePath;
-            } else {
-                return "main/" + relativePath;
-            }
-        }
-        
-        // マルチモジュールの場合の処理
-        // モジュール名/src/main/java/ または モジュール名/src/test/java/ のパターンを探す
-        Pattern pattern = Pattern.compile(".*/([^/]+)/(src/(main|test)/java/)(.+)");
-        Matcher matcher = pattern.matcher(normalizedPath);
-        
-        if (matcher.find()) {
-            String moduleName = matcher.group(1);
-            String codeType = matcher.group(3);  // main or test
-            String packagePath = matcher.group(4);
-            
-            return codeType + "/" + moduleName + "/" + packagePath;
-        }
-        
-        // どちらのパターンにも該当しない場合はファイル名のみを返す
-        return new File(originalFilePath).getName();
     }
     
     /**

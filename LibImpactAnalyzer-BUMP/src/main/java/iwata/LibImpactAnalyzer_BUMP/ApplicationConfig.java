@@ -16,6 +16,9 @@ public class ApplicationConfig {
     /** CSV出力先ファイルパス */
     public static String CSV_OUTPUT_PATH = null;
     
+    /** SHA値（プロジェクト識別用） */
+    public static String SHA = null;
+    
     /** 修正ファイル出力先ディレクトリ */
     public static String OUTPUT_DIR;
     
@@ -70,6 +73,14 @@ public class ApplicationConfig {
                 OUTPUT_DIR = parentDir.getAbsolutePath();
             } else {
                 OUTPUT_DIR = "/output";
+            }
+            
+            // CSV_OUTPUT_PATHのファイル名からSHAを抽出
+            // 例: /output/3ff575ae202cdf76ddfa8a4228a1711a6fa1e921.csv -> 3ff575ae202cdf76ddfa8a4228a1711a6fa1e921
+            String csvFileName = csvFile.getName();
+            if (csvFileName.endsWith(".csv")) {
+                SHA = csvFileName.substring(0, csvFileName.length() - 4);
+                System.out.println("SHA: " + SHA);
             }
         } else {
             OUTPUT_DIR = "/output";
