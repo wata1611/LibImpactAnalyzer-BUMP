@@ -22,6 +22,9 @@ import java.util.stream.Collectors;
  */
 public class SourceCodeFixer {
     
+    /** オリジナルファイル保存済みのファイルを追跡するSet */
+    private static Set<String> savedOriginalFiles = new HashSet<>();
+    
     /**
      * エラーが発生したファイルを修正する
      * 
@@ -34,6 +37,10 @@ public class SourceCodeFixer {
         try {
             // ファイル修正開始のヘッダー表示
             System.out.println("\n--- " + compilationError.getFileName() + " の修正処理開始 ---");
+            
+            
+            // オリジナルファイルを保存（初回のみ）
+            saveOriginalFile(file, compilationError.getFilePath());
             
             // 2回以上削除されたインポートを事前に削除
             removeRepeatedlyDeletedImports(file, compilationError.getFilePath());
@@ -134,6 +141,57 @@ public class SourceCodeFixer {
             e.printStackTrace();
             return 0;
         }
+    }
+    
+    /**
+     * オリジナルファイルをoriginalディレクトリに保存
+     * 各ファイルにつき最初の1回のみ保存する
+     * 
+     * @param file 対象ファイル
+     * @param originalFilePath 元のファイルパス
+     * @throws IOException ファイル操作エラー
+     */
+    private void saveOriginalFile(File file, String originalFilePath) throws IOException {
+        // すでに保存済みの場合はスキップ
+        if (savedOriginalFiles.contains(originalFilePath)) {
+            return;
+        }
+        
+        // SHA ディレクトリを作成 (例: /output/3ff575ae...)
+        String shaDir = ApplicationConfig.OUTPUT_DIR;
+        if (ApplicationConfig.SHA != null && !ApplicationConfig.SHA.isEmpty()) {
+            shaDir = ApplicationConfig.OUTPUT_DIR + "/" + ApplicationConfig.SHA;
+        }
+        
+        // originalディレクトリを作成 (例: /output/3ff575ae.../original)
+        String originalDirPath = shaDir + "/original";
+        File originalDir = new File(originalDirPath);
+        if (!originalDir.exists()) {
+            boolean created = originalDir.mkdirs();
+            if (created) {
+                System.out.println("originalディレクトリを作成: " + originalDirPath);
+            }
+        }
+        
+        // ファイル名のみを取得
+        String fileName = new File(originalFilePath).getName();
+        
+        // 出力先のファイルパスを構築（originalディレクトリ直下にファイル名のみ）
+        File outputFile = new File(originalDir, fileName);
+        
+        // ファイルが既に存在する場合はスキップ
+        if (outputFile.exists()) {
+            savedOriginalFiles.add(originalFilePath);
+            return;
+        }
+        
+        // ファイルをコピー
+        Files.copy(file.toPath(), outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        
+        System.out.println("オリジナルファイル保存: " + outputFile.getAbsolutePath());
+        
+        // 保存済みとしてマーク
+        savedOriginalFiles.add(originalFilePath);
     }
     
     /**
