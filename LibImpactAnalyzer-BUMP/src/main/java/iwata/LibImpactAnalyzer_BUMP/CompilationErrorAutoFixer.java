@@ -71,8 +71,16 @@ public class CompilationErrorAutoFixer {
         // プロジェクト構成の初期化(マルチモジュール検出)
         ApplicationConfig.initialize();
         
-        CompilationErrorAutoFixer autoFixer = new CompilationErrorAutoFixer();
-        autoFixer.run();
+        // コンソール出力のキャプチャを開始
+        ConsoleOutputCapture.start();
+        
+        try {
+            CompilationErrorAutoFixer autoFixer = new CompilationErrorAutoFixer();
+            autoFixer.run();
+        } finally {
+            // 例外が発生してもコンソール出力のキャプチャを終了
+            ConsoleOutputCapture.stop();
+        }
     }
     
     /**
