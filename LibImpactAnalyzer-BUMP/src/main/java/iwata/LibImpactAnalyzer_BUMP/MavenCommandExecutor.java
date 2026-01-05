@@ -211,9 +211,6 @@ public class MavenCommandExecutor {
         pb.directory(new File(ApplicationConfig.PROJECT_DIR));
         pb.redirectErrorStream(true);
 
-        // 開始時刻を記録
-        long startTime = System.currentTimeMillis();
-
         // プロセスを開始
         Process process = pb.start();
         BufferedReader reader = new BufferedReader(
@@ -257,10 +254,5 @@ public class MavenCommandExecutor {
 
         // プロセスの終了を待機
         process.waitFor();
-
-        // 終了時刻を記録
-        long endTime = System.currentTimeMillis();
-        double executionTime = (endTime - startTime) / 1000.0;
-        metrics.setExecutionTime(executionTime);
     }
 }

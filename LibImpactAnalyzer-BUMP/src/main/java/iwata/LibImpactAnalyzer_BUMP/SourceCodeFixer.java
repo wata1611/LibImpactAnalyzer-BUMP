@@ -131,7 +131,7 @@ public class SourceCodeFixer {
                 System.out.println("削除された行数: " + deletedElementCount);
                 System.out.println("修正完了: [" + (isTestFile ? "TEST" : "MAIN") + "] " + compilationError.getFileName());
             } else {
-                System.out.println("修正不要: " + compilationError.getFileName());
+                System.out.println("修正不可: " + compilationError.getFileName());
             }
 
             return deletedElementCount;

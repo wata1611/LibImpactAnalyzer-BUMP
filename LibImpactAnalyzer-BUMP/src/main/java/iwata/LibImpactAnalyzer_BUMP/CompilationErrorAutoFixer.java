@@ -44,6 +44,9 @@ public class CompilationErrorAutoFixer {
     /** 現在のループ番号（メインコードとテストコードで連番） */
     private int currentLoopNumber;
     
+    /** プログラム開始時刻 */
+    private long programStartTime;
+    
     /**
      * コンストラクタ
      * 必要なコンポーネントを初期化
@@ -89,6 +92,9 @@ public class CompilationErrorAutoFixer {
      * @throws Exception 処理中のエラー
      */
     public void run() throws Exception {
+        // プログラム開始時刻を記録
+        programStartTime = System.currentTimeMillis();
+        
         // フェーズ1: メインコードの修正
         System.out.println("===== Phase 1: Main Code =====");
         boolean mainCodeSuccess = fixMainCodeErrors();
@@ -100,6 +106,13 @@ public class CompilationErrorAutoFixer {
         // テスト実行とメトリクス収集
         System.out.println("\n===== Running Tests =====");
         FixMetrics finalMetrics = collectFinalMetrics();
+        
+        // プログラム終了時刻を記録し、全体の実行時間を計算
+        long programEndTime = System.currentTimeMillis();
+        double totalExecutionTime = (programEndTime - programStartTime) / 1000.0;
+        finalMetrics.setExecutionTime(totalExecutionTime);
+        
+        System.out.println("\nTotal program execution time: " + String.format("%.2f", totalExecutionTime) + " seconds");
         
         // CSV出力(最終結果のみ)
         List<FixMetrics> finalMetricsList = new ArrayList<>();
@@ -262,6 +275,7 @@ public class CompilationErrorAutoFixer {
     
     /**
      * 最終的なメトリクスを収集(テスト実行結果を含む)
+     * 注: 実行時間はrun()メソッドで後から設定される
      * @return 最終メトリクス
      * @throws Exception テスト実行時のエラー
      */
