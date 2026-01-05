@@ -40,8 +40,8 @@ public class MavenCommandExecutor {
         // return文欠如エラーを検出する正規表現パターン
         // 例: [ERROR] Example.java:[15,1] return文が指定されていません
         Pattern missingReturnPattern = Pattern.compile(
-        	    "\\[ERROR\\]\\s+(.+\\.java):\\[(\\d+),\\d+\\]\\s+(return文が指定されていません|missing return statement)"
-        	);
+            "\\[ERROR\\]\\s+(.+\\.java):\\[(\\d+),\\d+\\]\\s+(return文が指定されていません|missing return statement)"
+        );
         
         // Spotlessエラーを検出する正規表現パターン
         // 例: [ERROR]   src/main/java/org/example/Example.java:L10 palantir-java-format(palantir-java-format) error: '.'がありません
@@ -140,8 +140,13 @@ public class MavenCommandExecutor {
         // エラー情報を格納するMap（ファイル名 → CompilationError）
         Map<String, CompilationError> errorFiles = new HashMap<>();
         
-        // エラー行を検出する正規表現パターン
-        Pattern errorPattern = Pattern.compile("\\[ERROR\\]\\s+(.+\\.java):\\[(\\d+),(\\d+)\\]");
+        // エラー行を検出する正規表現パターン（メインコードと同じ緩いパターン）
+        Pattern errorPattern = Pattern.compile("([^\\\\/:*?\"<>|]+\\.java).*?\\[(\\d+),");
+        
+        // return文欠如エラーを検出する正規表現パターン
+        Pattern missingReturnPattern = Pattern.compile(
+            "\\[ERROR\\]\\s+(.+\\.java):\\[(\\d+),\\d+\\]\\s+(return文が指定されていません|missing return statement)"
+        );
         
         // Spotlessエラーを検出する正規表現パターン
         Pattern spotlessErrorPattern = Pattern.compile("\\[ERROR\\]\\s+(.+\\.java):L(\\d+)\\s+.*error:");
@@ -175,7 +180,26 @@ public class MavenCommandExecutor {
                 continue;
             }
             
-            // コンパイルエラーのチェック
+            // return文欠如エラーのチェック
+            Matcher returnMatcher = missingReturnPattern.matcher(line);
+            if (returnMatcher.find()) {
+                String filePath = returnMatcher.group(1);
+                int lineNumber = Integer.parseInt(returnMatcher.group(2));
+                String fileName = new File(filePath).getName();
+                
+                // ファイルの完全パスを取得
+                String fullPath = JavaFileSearcher.findJavaFile(fileName);
+                if (fullPath != null) {
+                    // CompilationErrorオブジェクトを取得または作成
+                    CompilationError errorInfo = errorFiles.computeIfAbsent(fileName, 
+                        k -> new CompilationError(fileName, fullPath));
+                    errorInfo.addErrorLine(lineNumber);
+                    errorInfo.setMissingReturnStatement(true);  // return文欠如フラグをセット
+                }
+                continue;
+            }
+            
+            // 通常のコンパイルエラーのチェック
             Matcher m = errorPattern.matcher(line);
             if (m.find()) {
                 String fileName = m.group(1);
