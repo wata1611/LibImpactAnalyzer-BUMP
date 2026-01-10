@@ -12,13 +12,13 @@ import java.util.regex.*;
 public class MavenCommandExecutor {
     
     /**
-     * メインコードのコンパイルを実行し、エラー情報を抽出
+     * メインコードのコンパイルを実行し、エラー情報とビルド結果を抽出
      * "mvn clean compile" コマンドを実行
      * 
-     * @return ファイル名をキーとするエラー情報のMap
+     * @return コンパイル結果（エラー情報とビルド成功/失敗）
      * @throws Exception コンパイル実行時のエラー
      */
-    public Map<String, CompilationError> compileMainCode() throws Exception {
+    public CompilationResult compileMainCode() throws Exception {
         // Mavenコンパイルコマンドを構築
         ProcessBuilder pb = new ProcessBuilder(ApplicationConfig.getMavenCmd(), "clean", "compile");
         pb.directory(new File(ApplicationConfig.PROJECT_DIR));
@@ -32,6 +32,9 @@ public class MavenCommandExecutor {
 
         // エラー情報を格納するMap（ファイル名 → CompilationError）
         Map<String, CompilationError> errorFiles = new HashMap<>();
+        
+        // ビルド成功フラグ
+        boolean buildSuccess = false;
         
         // エラー行を検出する正規表現パターン
         // 例: [ERROR] Example.java:[10,5] シンボルを見つけられません
@@ -56,6 +59,11 @@ public class MavenCommandExecutor {
                 System.out.println(line);
             }
             
+            // BUILD SUCCESSのチェック
+            if (line.contains("BUILD SUCCESS")) {
+                buildSuccess = true;
+            }
+            
             // Spotlessエラーのチェック（最優先）
             Matcher spotlessMatcher = spotlessErrorPattern.matcher(line);
             if (spotlessMatcher.find()) {
@@ -116,17 +124,17 @@ public class MavenCommandExecutor {
         // プロセスの終了を待機
         process.waitFor();
 
-        return errorFiles;
+        return new CompilationResult(errorFiles, buildSuccess);
     }
     
     /**
-     * テストコードのコンパイルを実行し、エラー情報を抽出
+     * テストコードのコンパイルを実行し、エラー情報とビルド結果を抽出
      * "mvn test-compile" コマンドを実行
      * 
-     * @return ファイル名をキーとするエラー情報のMap
+     * @return コンパイル結果（エラー情報とビルド成功/失敗）
      * @throws Exception コンパイル実行時のエラー
      */
-    public Map<String, CompilationError> compileTestCode() throws Exception {
+    public CompilationResult compileTestCode() throws Exception {
         // Mavenテストコンパイルコマンドを構築
         ProcessBuilder pb = new ProcessBuilder(ApplicationConfig.getMavenCmd(), "test-compile");
         pb.directory(new File(ApplicationConfig.PROJECT_DIR));
@@ -140,6 +148,9 @@ public class MavenCommandExecutor {
 
         // エラー情報を格納するMap（ファイル名 → CompilationError）
         Map<String, CompilationError> errorFiles = new HashMap<>();
+        
+        // ビルド成功フラグ
+        boolean buildSuccess = false;
         
         // エラー行を検出する正規表現パターン（メインコードと同じ緩いパターン）
         Pattern errorPattern = Pattern.compile("([^\\\\/:*?\"<>|]+\\.java).*?\\[(\\d+),");
@@ -161,6 +172,11 @@ public class MavenCommandExecutor {
                 System.out.println(line);
             }
             
+            // BUILD SUCCESSのチェック
+            if (line.contains("BUILD SUCCESS")) {
+                buildSuccess = true;
+            }
+            
             // Spotlessエラーのチェック（最優先）
             Matcher spotlessMatcher = spotlessErrorPattern.matcher(line);
             if (spotlessMatcher.find()) {
@@ -221,7 +237,7 @@ public class MavenCommandExecutor {
         // プロセスの終了を待機
         process.waitFor();
 
-        return errorFiles;
+        return new CompilationResult(errorFiles, buildSuccess);
     }
     
     /**

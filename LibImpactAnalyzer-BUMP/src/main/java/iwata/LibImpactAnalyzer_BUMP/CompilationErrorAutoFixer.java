@@ -47,6 +47,12 @@ public class CompilationErrorAutoFixer {
     /** プログラム開始時刻 */
     private long programStartTime;
     
+    /** メインコードのビルド成功フラグ */
+    private boolean mainCodeBuildSuccess = false;
+    
+    /** テストコードのビルド成功フラグ */
+    private boolean testCodeBuildSuccess = false;
+    
     /**
      * コンストラクタ
      * 必要なコンポーネントを初期化
@@ -119,12 +125,97 @@ public class CompilationErrorAutoFixer {
         finalMetricsList.add(finalMetrics);
         CsvWriter.writeMetrics(finalMetricsList);
         
-        // 最終結果の表示
-        if (mainCodeSuccess && testCodeSuccess) {
-            System.out.println("\n===== Compilation Successful =====");
+        // 最終結果の判定とディレクトリ移動
+        boolean overallSuccess = mainCodeBuildSuccess && testCodeBuildSuccess;
+        
+        if (overallSuccess) {
+            System.out.println("\n===== BUILD SUCCESS: Both Main and Test Code Compiled Successfully =====");
+            moveToResultDirectory("success");
         } else {
-            System.out.println("\n===== Max iterations reached. Unresolved errors remain. =====");
+            System.out.println("\n===== BUILD FAILURE: Compilation Failed =====");
+            if (!mainCodeBuildSuccess) {
+                System.out.println("Main code build failed");
+            }
+            if (!testCodeBuildSuccess) {
+                System.out.println("Test code build failed");
+            }
+            moveToResultDirectory("failure");
         }
+        
+        // 従来の成功/失敗メッセージも表示
+        if (mainCodeSuccess && testCodeSuccess) {
+            System.out.println("Note: All errors were resolved within max iterations");
+        } else {
+            System.out.println("Note: Max iterations reached. Some errors may remain");
+        }
+    }
+    
+    /**
+     * SHA名ディレクトリを成功/失敗のresultディレクトリに移動
+     * @param resultType "success" または "failure"
+     */
+    private void moveToResultDirectory(String resultType) {
+        try {
+            if (ApplicationConfig.SHA == null || ApplicationConfig.SHA.isEmpty()) {
+                System.out.println("警告: SHAが設定されていないため、ディレクトリ移動をスキップします");
+                return;
+            }
+            
+            // 移動元: /output/SHA
+            File sourceDir = new File(ApplicationConfig.OUTPUT_DIR, ApplicationConfig.SHA);
+            
+            // 移動先: /output/result/success/SHA または /output/result/failure/SHA
+            File resultBaseDir = new File(ApplicationConfig.OUTPUT_DIR, "result");
+            File resultTypeDir = new File(resultBaseDir, resultType);
+            File destinationDir = new File(resultTypeDir, ApplicationConfig.SHA);
+            
+            // result/success または result/failure ディレクトリを作成
+            if (!resultTypeDir.exists()) {
+                resultTypeDir.mkdirs();
+                System.out.println("結果ディレクトリを作成: " + resultTypeDir.getAbsolutePath());
+            }
+            
+            // SHAディレクトリが存在する場合のみ移動
+            if (sourceDir.exists()) {
+                // 移動先に既に存在する場合は削除
+                if (destinationDir.exists()) {
+                    deleteDirectory(destinationDir);
+                }
+                
+                // ディレクトリを移動（リネーム）
+                boolean moved = sourceDir.renameTo(destinationDir);
+                
+                if (moved) {
+                    System.out.println("結果ディレクトリに移動: " + destinationDir.getAbsolutePath());
+                } else {
+                    System.err.println("警告: ディレクトリの移動に失敗しました");
+                    System.err.println("  移動元: " + sourceDir.getAbsolutePath());
+                    System.err.println("  移動先: " + destinationDir.getAbsolutePath());
+                }
+            } else {
+                System.out.println("警告: SHAディレクトリが存在しないため、移動をスキップします: " + sourceDir.getAbsolutePath());
+            }
+            
+        } catch (Exception e) {
+            System.err.println("ディレクトリ移動中にエラーが発生しました: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * ディレクトリを再帰的に削除
+     * @param directory 削除対象のディレクトリ
+     */
+    private void deleteDirectory(File directory) {
+        if (directory.isDirectory()) {
+            File[] files = directory.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    deleteDirectory(file);
+                }
+            }
+        }
+        directory.delete();
     }
     
     /**
@@ -151,7 +242,13 @@ public class CompilationErrorAutoFixer {
             int mainCodeTotalLines = LineCounter.countTotalLines(ApplicationConfig.getAllSrcDirs());
 
             // メインコードをコンパイルしてエラーを抽出
-            Map<String, CompilationError> mainErrorFiles = commandExecutor.compileMainCode();
+            CompilationResult result = commandExecutor.compileMainCode();
+            Map<String, CompilationError> mainErrorFiles = result.getErrorFiles();
+            
+            // ビルド成功フラグを更新
+            if (result.isBuildSuccess()) {
+                mainCodeBuildSuccess = true;
+            }
             
             // エラーがなければ成功
             if (mainErrorFiles.isEmpty()) {
@@ -224,7 +321,13 @@ public class CompilationErrorAutoFixer {
             int testCodeTotalLines = LineCounter.countTotalLines(ApplicationConfig.getAllTestDirs());
 
             // テストコードをコンパイルしてエラーを抽出
-            Map<String, CompilationError> testErrorFiles = commandExecutor.compileTestCode();
+            CompilationResult result = commandExecutor.compileTestCode();
+            Map<String, CompilationError> testErrorFiles = result.getErrorFiles();
+            
+            // ビルド成功フラグを更新
+            if (result.isBuildSuccess()) {
+                testCodeBuildSuccess = true;
+            }
             
             // エラーがなければ成功
             if (testErrorFiles.isEmpty()) {
