@@ -391,7 +391,7 @@ public class SourceCodeFixer {
     
     /**
      * テストファイルのエラー修正
-     * エラー行を含むメソッドの本体を削除し、Assert.fail文を挿入
+     * エラー行を含み、かつテストアノテーション(@Test等)が付いているメソッドの本体を削除し、Assert.fail文を挿入
      * 
      * @param launcher Spoon Launcher
      * @param model ASTモデル
@@ -421,6 +421,11 @@ public class SourceCodeFixer {
                 // すでに処理済みのメソッドはスキップ
                 if (processedMethods.contains(method)) {
                     continue;
+                }
+                
+                // テストアノテーションが付いているかチェック
+                if (!hasTestAnnotation(method)) {
+                    continue;  // テストアノテーションがないメソッドはスキップ
                 }
                 
                 SourcePosition methodPos = method.getPosition();
@@ -468,6 +473,32 @@ public class SourceCodeFixer {
         }
         
         return modifiedCount;
+    }
+    
+    /**
+     * メソッドにテストアノテーションが付いているかチェック
+     * JUnit4の@Test, JUnit5の@Test, @ParameterizedTest, @RepeatedTest等に対応
+     * 
+     * @param method チェック対象のメソッド
+     * @return テストアノテーションが付いている場合true
+     */
+    private boolean hasTestAnnotation(CtMethod<?> method) {
+        List<CtAnnotation<? extends java.lang.annotation.Annotation>> annotations = method.getAnnotations();
+        
+        for (CtAnnotation<?> annotation : annotations) {
+            String annotationName = annotation.getAnnotationType().getSimpleName();
+            
+            // JUnit4, JUnit5のテストアノテーションをチェック
+            if (annotationName.equals("Test") ||              // @Test (JUnit4/5)
+                annotationName.equals("ParameterizedTest") ||  // @ParameterizedTest (JUnit5)
+                annotationName.equals("RepeatedTest") ||       // @RepeatedTest (JUnit5)
+                annotationName.equals("TestFactory") ||        // @TestFactory (JUnit5)
+                annotationName.equals("TestTemplate")) {       // @TestTemplate (JUnit5)
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     /**
