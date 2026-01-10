@@ -43,6 +43,9 @@ public class FixMetrics {
     /** 実行時間（秒） */
     private double executionTime;
     
+    /** 削除されたテストメソッド数 */
+    private int removedTestMethods;
+    
     /** 失敗したテストケース名のリスト */
     private List<String> failedTestCases;
     
@@ -157,6 +160,14 @@ public class FixMetrics {
     
     public void setExecutionTime(double executionTime) {
         this.executionTime = executionTime;
+    }
+    
+    public int getRemovedTestMethods() {
+        return removedTestMethods;
+    }
+    
+    public void setRemovedTestMethods(int removedTestMethods) {
+        this.removedTestMethods = removedTestMethods;
     }
     
     public List<String> getFailedTestCases() {

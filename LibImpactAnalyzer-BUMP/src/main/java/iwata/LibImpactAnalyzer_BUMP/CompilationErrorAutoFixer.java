@@ -41,6 +41,9 @@ public class CompilationErrorAutoFixer {
     /** テストコード累積削除行数 */
     private int totalTestDeletedLines;
     
+    /** 削除されたテストメソッド数 */
+    private int totalRemovedTestMethods;
+    
     /** 現在のループ番号（メインコードとテストコードで連番） */
     private int currentLoopNumber;
     
@@ -66,6 +69,7 @@ public class CompilationErrorAutoFixer {
         this.allModifiedTestFiles = new HashSet<>();
         this.totalMainDeletedLines = 0;
         this.totalTestDeletedLines = 0;
+        this.totalRemovedTestMethods = 0;
         this.currentLoopNumber = 0;
     }
     
@@ -274,7 +278,8 @@ public class CompilationErrorAutoFixer {
                 }
 
                 // ファイルを修正（ループ番号を渡す）
-                int deletedLines = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber);
+                int[] result_fix = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber);
+                int deletedLines = result_fix[0];
                 if (deletedLines > 0) {
                     mainCodeDeletedLines += deletedLines;
                     modifiedMainFiles.add(compilationError.getFileName());
@@ -341,6 +346,7 @@ public class CompilationErrorAutoFixer {
 
             // メトリクス収集用の変数
             int testCodeDeletedLines = 0;
+            int removedTestMethods = 0;
             Set<String> modifiedTestFiles = new HashSet<>();
 
             // 各エラーファイルに対して修正処理を実行
@@ -353,15 +359,19 @@ public class CompilationErrorAutoFixer {
                 }
 
                 // ファイルを修正（ループ番号を渡す）
-                int deletedLines = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber);
+                int[] result_fix = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber);
+                int deletedLines = result_fix[0];
+                int removedMethods = result_fix[1];
                 if (deletedLines > 0) {
                     testCodeDeletedLines += deletedLines;
                     modifiedTestFiles.add(compilationError.getFileName());
                 }
+                removedTestMethods += removedMethods;
             }
 
             // 累積データを更新
             totalTestDeletedLines += testCodeDeletedLines;
+            totalRemovedTestMethods += removedTestMethods;
             allModifiedTestFiles.addAll(modifiedTestFiles);
             totalIterations = Math.max(totalIterations, iteration);
 
@@ -399,6 +409,9 @@ public class CompilationErrorAutoFixer {
         finalMetrics.setTestCodeDeletedLines(totalTestDeletedLines);
         finalMetrics.setMainCodeModifiedFiles(allModifiedMainFiles.size());
         finalMetrics.setTestCodeModifiedFiles(allModifiedTestFiles.size());
+        
+        // 削除されたテストメソッド数を記録
+        finalMetrics.setRemovedTestMethods(totalRemovedTestMethods);
         
         for (String fileName : allModifiedMainFiles) {
             finalMetrics.addModifiedMainFile(fileName);

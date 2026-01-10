@@ -85,6 +85,7 @@ public class CsvWriter {
                "Test Code Deleted Lines," +
                "Modified Main Files Count," +
                "Modified Test Files Count," +
+               "Removed Testcase," +
                "Tests Run," +
                "Failures," +
                "Errors," +
@@ -108,6 +109,7 @@ public class CsvWriter {
                metrics.getTestCodeDeletedLines() + "," +
                metrics.getMainCodeModifiedFiles() + "," +
                metrics.getTestCodeModifiedFiles() + "," +
+               metrics.getRemovedTestMethods() + "," +
                metrics.getTestsRun() + "," +
                metrics.getFailures() + "," +
                metrics.getErrors() + "," +

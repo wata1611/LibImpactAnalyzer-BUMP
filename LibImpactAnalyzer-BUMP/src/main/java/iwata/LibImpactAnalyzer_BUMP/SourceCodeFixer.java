@@ -31,9 +31,9 @@ public class SourceCodeFixer {
      * @param file 修正対象のファイル
      * @param compilationError エラー情報(エラー行番号など)
      * @param loopNumber 現在のループ番号
-     * @return 削除された行数
+     * @return 修正結果を格納した配列 [削除された行数, 削除されたテストメソッド数]
      */
-    public int fixErrorFile(File file, CompilationError compilationError, int loopNumber) {
+    public int[] fixErrorFile(File file, CompilationError compilationError, int loopNumber) {
         try {
             // ファイル修正開始のヘッダー表示
             System.out.println("\n--- " + compilationError.getFileName() + " の修正処理開始 ---");
@@ -58,10 +58,13 @@ public class SourceCodeFixer {
 
             boolean modified = false;
             int deletedElementCount = 0;
+            int removedTestMethodCount = 0;  // 削除されたテストメソッド数
 
             if (isTestFile) {
-                // テストコードの場合: エラーメソッドの本体を削除してAssert.failを挿入
-                int count = fixTestFile(launcher, model, compilationError);
+                // テストコードの場合: エラーを含むテストメソッドを削除
+                int[] result = fixTestFile(launcher, model, compilationError);
+                int count = result[0];
+                removedTestMethodCount = result[1];
                 if (count > 0) {
                     modified = true;
                     deletedElementCount = count;
@@ -126,17 +129,20 @@ public class SourceCodeFixer {
             // 修正完了メッセージ
             if (modified) {
                 System.out.println("削除された行数: " + deletedElementCount);
+                if (removedTestMethodCount > 0) {
+                    System.out.println("削除されたテストメソッド数: " + removedTestMethodCount);
+                }
                 System.out.println("修正完了: [" + (isTestFile ? "TEST" : "MAIN") + "] " + compilationError.getFileName());
             } else {
                 System.out.println("修正不可: " + compilationError.getFileName());
             }
 
-            return deletedElementCount;
+            return new int[] { deletedElementCount, removedTestMethodCount };
 
         } catch (Exception e) {
             System.err.println("Error processing file: " + compilationError.getFileName() + " - " + e.getMessage());
             e.printStackTrace();
-            return 0;
+            return new int[] { 0, 0 };
         }
     }
     
@@ -391,16 +397,17 @@ public class SourceCodeFixer {
     
     /**
      * テストファイルのエラー修正
-     * - テストアノテーション(@Test等)が付いているメソッド: 本体を削除してAssert.fail文を挿入
+     * - テストアノテーション(@Test等)が付いているメソッド: メソッド全体を削除
      * - それ以外のメソッド/コード: メインコードと同様にエラー行の要素を削除
      * 
      * @param launcher Spoon Launcher
      * @param model ASTモデル
      * @param compilationError エラー情報
-     * @return 修正された要素数
+     * @return 修正結果を格納した配列 [削除された要素数, 削除されたテストメソッド数]
      */
-    private int fixTestFile(Launcher launcher, CtModel model, CompilationError compilationError) {
+    private int[] fixTestFile(Launcher launcher, CtModel model, CompilationError compilationError) {
         int modifiedCount = 0;
+        int removedTestMethodCount = 0;
         Set<CtMethod<?>> processedMethods = new HashSet<>();  // 処理済みメソッドを追跡
         
         // モデル内の全メソッドを取得
@@ -439,38 +446,14 @@ public class SourceCodeFixer {
                     
                     // エラー行がメソッド内にあるかチェック
                     if (lineNum >= startLine && lineNum <= endLine) {
-                        // メソッド本体を取得または作成
-                        CtBlock<?> body = method.getBody();
-                        if (body != null) {
-                            int statementCount = body.getStatements().size();
-                            System.out.println("テストメソッド本体をクリア: " + method.getSimpleName() + " (削除ステートメント数: " + statementCount + ")");
-                            body.getStatements().clear();  // 既存のステートメントをクリア
-                            modifiedCount += statementCount;
-                        } else {
-                            body = launcher.getFactory().Core().createBlock();
-                            method.setBody(body);
-                        }
-                        
-                        // Assert.fail文を挿入(試行)
-                        try {
-                            CtStatement failStatement = launcher.getFactory().Code()
-                                .createCodeSnippetStatement(
-                                    "org.junit.Assert.fail(\"[LIB-REMOVED] このテストは削除対象ライブラリ依存のため失敗扱い\")"
-                                );
-                            body.addStatement(failStatement);
-                            System.out.println("Assert.fail文を挿入: " + method.getSimpleName());
-                        } catch (Exception e) {
-                            // Assert.fail挿入失敗時はRuntimeExceptionをスロー
-                            CtStatement throwStatement = launcher.getFactory().Code()
-                                .createCodeSnippetStatement(
-                                    "throw new RuntimeException(\"[LIB-REMOVED] このテストは削除対象ライブラリ依存のため失敗扱い\")"
-                                );
-                            body.addStatement(throwStatement);
-                            System.out.println("RuntimeException文を挿入: " + method.getSimpleName());
-                        }
+                        // テストメソッド全体を削除
+                        String methodName = method.getSimpleName();
+                        System.out.println("テストメソッドを削除: " + methodName + " (行 " + startLine + "-" + endLine + ")");
+                        method.delete();
                         
                         processedMethods.add(method);
                         modifiedCount++;
+                        removedTestMethodCount++;
                         handledByTestMethod = true;
                         break;  // このエラー行は処理済み
                     }
@@ -501,7 +484,7 @@ public class SourceCodeFixer {
             }
         }
         
-        return modifiedCount;
+        return new int[] { modifiedCount, removedTestMethodCount };
     }
     
     /**
