@@ -391,7 +391,8 @@ public class SourceCodeFixer {
     
     /**
      * テストファイルのエラー修正
-     * エラー行を含み、かつテストアノテーション(@Test等)が付いているメソッドの本体を削除し、Assert.fail文を挿入
+     * - テストアノテーション(@Test等)が付いているメソッド: 本体を削除してAssert.fail文を挿入
+     * - それ以外のメソッド/コード: メインコードと同様にエラー行の要素を削除
      * 
      * @param launcher Spoon Launcher
      * @param model ASTモデル
@@ -416,6 +417,9 @@ public class SourceCodeFixer {
                 continue;  // クラス宣言エラーの場合はメソッド処理をスキップ
             }
             
+            boolean handledByTestMethod = false;
+            
+            // テストアノテーション付きメソッドのチェック
             for (CtMethod<?> method : methods) {
                 
                 // すでに処理済みのメソッドはスキップ
@@ -425,7 +429,7 @@ public class SourceCodeFixer {
                 
                 // テストアノテーションが付いているかチェック
                 if (!hasTestAnnotation(method)) {
-                    continue;  // テストアノテーションがないメソッドはスキップ
+                    continue;  // テストアノテーションがないメソッドはスキップ（後で別途処理）
                 }
                 
                 SourcePosition methodPos = method.getPosition();
@@ -467,7 +471,32 @@ public class SourceCodeFixer {
                         
                         processedMethods.add(method);
                         modifiedCount++;
+                        handledByTestMethod = true;
+                        break;  // このエラー行は処理済み
                     }
+                }
+            }
+            
+            // テストアノテーション付きメソッドで処理されなかった場合、通常の削除処理を実行
+            if (!handledByTestMethod) {
+                // 指定された行番号の要素を検索
+                List<CtElement> targetNodes = model.getElements(e -> {
+                    SourcePosition pos = e.getPosition();
+                    return pos != null && pos.isValidPosition() && pos.getLine() == lineNum;
+                });
+
+                // 見つかった要素を削除
+                for (CtElement element : targetNodes) {
+                    // クラス宣言やインターフェース宣言は削除しない（別途処理済み）
+                    if (element instanceof CtClass || element instanceof CtInterface) {
+                        System.out.println("警告: クラス/インターフェース宣言は削除をスキップ: " + element.getClass().getSimpleName());
+                        continue;
+                    }
+                    
+                    // 削除する要素の詳細を出力
+                    System.out.println("削除対象要素(テストファイル): " + element.getClass().getSimpleName() + " - " + element.getShortRepresentation());
+                    element.delete();
+                    modifiedCount++;
                 }
             }
         }
