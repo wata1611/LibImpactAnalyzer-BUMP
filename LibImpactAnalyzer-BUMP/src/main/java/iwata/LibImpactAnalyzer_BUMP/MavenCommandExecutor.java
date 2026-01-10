@@ -50,8 +50,9 @@ public class MavenCommandExecutor {
         // コンパイル出力を1行ずつ読み込んで解析
         String line;
         while ((line = reader.readLine()) != null) {
-            // エラー行のみコンソールに出力
-            if (line.contains("[ERROR]")) {
+            // エラー行、INFO行、BUILD行を出力
+            if (line.contains("[ERROR]") || line.contains("[INFO]") || 
+                line.contains("BUILD SUCCESS") || line.contains("BUILD FAILURE")) {
                 System.out.println(line);
             }
             
@@ -154,8 +155,9 @@ public class MavenCommandExecutor {
         // コンパイル出力を1行ずつ読み込んで解析
         String line;
         while ((line = reader.readLine()) != null) {
-            // エラー行のみコンソールに出力
-            if (line.contains("[ERROR]")) {
+            // エラー行、INFO行、BUILD行を出力
+            if (line.contains("[ERROR]") || line.contains("[INFO]") || 
+                line.contains("BUILD SUCCESS") || line.contains("BUILD FAILURE")) {
                 System.out.println(line);
             }
             
@@ -251,6 +253,14 @@ public class MavenCommandExecutor {
 
         String line;
         while ((line = reader.readLine()) != null) {
+            // テスト関連のログを出力
+            if (line.contains("[INFO]") || line.contains("[ERROR]") || 
+                line.contains("Tests run:") || line.contains("BUILD SUCCESS") || 
+                line.contains("BUILD FAILURE") || line.contains("Running ") ||
+                line.contains("FAILURE!") || line.contains("ERROR!")) {
+                System.out.println(line);
+            }
+            
             // テスト結果サマリーのチェック
             Matcher summaryMatcher = summaryPattern.matcher(line);
             if (summaryMatcher.find()) {

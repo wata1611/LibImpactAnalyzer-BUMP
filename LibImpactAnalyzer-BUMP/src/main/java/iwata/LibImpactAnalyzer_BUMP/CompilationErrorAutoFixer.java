@@ -155,7 +155,7 @@ public class CompilationErrorAutoFixer {
             
             // エラーがなければ成功
             if (mainErrorFiles.isEmpty()) {
-                System.out.println("Main code compilation successful");
+                System.out.println("Main code compilation successful (Loop: " + iteration + ", Global Loop: " + currentLoopNumber + ")");
                 success = true;
                 break;
             }
@@ -228,7 +228,7 @@ public class CompilationErrorAutoFixer {
             
             // エラーがなければ成功
             if (testErrorFiles.isEmpty()) {
-                System.out.println("Test code compilation successful");
+                System.out.println("Test code compilation successful (Loop: " + iteration + ", Global Loop: " + currentLoopNumber + ")");
                 success = true;
                 break;
             }
