@@ -7,8 +7,14 @@ import java.util.*;
  * CSV出力用のデータを管理
  */
 public class FixMetrics {
-    /** 反復回数 */
-    private int iteration;
+    /** メインコードの反復回数 */
+    private int mainCodeIteration;
+    
+    /** テストコードの反復回数 */
+    private int testCodeIteration;
+    
+    /** 総反復回数（メイン + テスト） */
+    private int totalIteration;
     
     /** メインコードの総行数 */
     private int mainCodeTotalLines;
@@ -75,12 +81,40 @@ public class FixMetrics {
     
     // ===== Getters and Setters =====
     
-    public int getIteration() {
-        return iteration;
+    public int getMainCodeIteration() {
+        return mainCodeIteration;
     }
     
+    public void setMainCodeIteration(int mainCodeIteration) {
+        this.mainCodeIteration = mainCodeIteration;
+    }
+    
+    public int getTestCodeIteration() {
+        return testCodeIteration;
+    }
+    
+    public void setTestCodeIteration(int testCodeIteration) {
+        this.testCodeIteration = testCodeIteration;
+    }
+    
+    public int getTotalIteration() {
+        return totalIteration;
+    }
+    
+    public void setTotalIteration(int totalIteration) {
+        this.totalIteration = totalIteration;
+    }
+    
+    /** 後方互換性のため残しておく（totalIterationのエイリアス） */
+    @Deprecated
+    public int getIteration() {
+        return totalIteration;
+    }
+    
+    /** 後方互換性のため残しておく（totalIterationのエイリアス） */
+    @Deprecated
     public void setIteration(int iteration) {
-        this.iteration = iteration;
+        this.totalIteration = iteration;
     }
     
     public int getMainCodeTotalLines() {

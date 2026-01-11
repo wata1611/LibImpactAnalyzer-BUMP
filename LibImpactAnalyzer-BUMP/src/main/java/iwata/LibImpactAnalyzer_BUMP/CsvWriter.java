@@ -78,7 +78,9 @@ public class CsvWriter {
      * @return ヘッダー行
      */
     private static String getHeader() {
-        return "Iteration," +
+        return "Main Code Iteration," +
+               "Test Code Iteration," +
+               "Total Iteration," +
                "Main Code Total Lines," +
                "Test Code Total Lines," +
                "Main Code Deleted Lines," +
@@ -105,7 +107,9 @@ public class CsvWriter {
      * @return CSV行
      */
     private static String toCSVLine(FixMetrics metrics) {
-        return metrics.getIteration() + "," +
+        return metrics.getMainCodeIteration() + "," +
+               metrics.getTestCodeIteration() + "," +
+               metrics.getTotalIteration() + "," +
                metrics.getMainCodeTotalLines() + "," +
                metrics.getTestCodeTotalLines() + "," +
                metrics.getMainCodeDeletedLines() + "," +

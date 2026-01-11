@@ -26,7 +26,13 @@ public class CompilationErrorAutoFixer {
     /** メトリクスデータのリスト */
     private final List<FixMetrics> metricsList;
     
-    /** 総反復回数 */
+    /** メインコードの総反復回数 */
+    private int mainCodeIterations;
+    
+    /** テストコードの総反復回数 */
+    private int testCodeIterations;
+    
+    /** 総反復回数（メイン + テスト） */
     private int totalIterations;
     
     /** 修正されたメインコードファイルのセット */
@@ -73,6 +79,8 @@ public class CompilationErrorAutoFixer {
         this.commandExecutor = new MavenCommandExecutor();
         this.sourceCodeFixer = new SourceCodeFixer();
         this.metricsList = new ArrayList<>();
+        this.mainCodeIterations = 0;
+        this.testCodeIterations = 0;
         this.totalIterations = 0;
         this.allModifiedMainFiles = new HashSet<>();
         this.allModifiedTestFiles = new HashSet<>();
@@ -319,7 +327,7 @@ public class CompilationErrorAutoFixer {
             // 累積データを更新
             totalMainDeletedLines += mainCodeDeletedLines;
             allModifiedMainFiles.addAll(modifiedMainFiles);
-            totalIterations = iteration;
+            mainCodeIterations = iteration;
 
             // 修正されたファイルがない場合は処理を終了
             if (modifiedMainFiles.isEmpty()) {
@@ -403,7 +411,7 @@ public class CompilationErrorAutoFixer {
             totalTestDeletedLines += testCodeDeletedLines;
             totalRemovedTestMethods += removedTestMethods;
             allModifiedTestFiles.addAll(modifiedTestFiles);
-            totalIterations = Math.max(totalIterations, iteration);
+            testCodeIterations = iteration;
 
             // 修正されたファイルがない場合は処理を終了
             if (modifiedTestFiles.isEmpty()) {
@@ -425,8 +433,11 @@ public class CompilationErrorAutoFixer {
     private FixMetrics collectFinalMetrics() throws Exception {
         FixMetrics finalMetrics = new FixMetrics();
         
-        // 総反復回数を記録
-        finalMetrics.setIteration(totalIterations);
+        // 総反復回数を計算して記録
+        totalIterations = mainCodeIterations + testCodeIterations;
+        finalMetrics.setMainCodeIteration(mainCodeIterations);
+        finalMetrics.setTestCodeIteration(testCodeIterations);
+        finalMetrics.setTotalIteration(totalIterations);
         
         // 最終的なコード行数を記録
         int mainCodeTotalLines = LineCounter.countTotalLines(ApplicationConfig.getAllSrcDirs());
