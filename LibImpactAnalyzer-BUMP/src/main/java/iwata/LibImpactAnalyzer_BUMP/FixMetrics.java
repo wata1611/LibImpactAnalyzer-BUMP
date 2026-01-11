@@ -61,8 +61,14 @@ public class FixMetrics {
     /** 削除されたテストメソッド数 */
     private int removedTestMethods;
     
-    /** 失敗したテストケース名のリスト */
+    /** 失敗したテストケース名のリスト（Failures） */
     private List<String> failedTestCases;
+    
+    /** エラーが発生したテストケース名のリスト（Errors） */
+    private List<String> errorTestCases;
+    
+    /** スキップされたテストケース名のリスト（Skipped） */
+    private List<String> skippedTestCases;
     
     /** 削除されたテストケース名のリスト */
     private List<String> removedTestCases;
@@ -78,6 +84,8 @@ public class FixMetrics {
      */
     public FixMetrics() {
         this.failedTestCases = new ArrayList<>();
+        this.errorTestCases = new ArrayList<>();
+        this.skippedTestCases = new ArrayList<>();
         this.removedTestCases = new ArrayList<>();
         this.modifiedMainFiles = new ArrayList<>();
         this.modifiedTestFiles = new ArrayList<>();
@@ -246,7 +254,29 @@ public class FixMetrics {
     }
     
     public void addFailedTestCase(String testCase) {
-        this.failedTestCases.add(testCase);
+        if (!this.failedTestCases.contains(testCase)) {
+            this.failedTestCases.add(testCase);
+        }
+    }
+    
+    public List<String> getErrorTestCases() {
+        return errorTestCases;
+    }
+    
+    public void addErrorTestCase(String testCase) {
+        if (!this.errorTestCases.contains(testCase)) {
+            this.errorTestCases.add(testCase);
+        }
+    }
+    
+    public List<String> getSkippedTestCases() {
+        return skippedTestCases;
+    }
+    
+    public void addSkippedTestCase(String testCase) {
+        if (!this.skippedTestCases.contains(testCase)) {
+            this.skippedTestCases.add(testCase);
+        }
     }
     
     public List<String> getRemovedTestCases() {
@@ -284,6 +314,14 @@ public class FixMetrics {
      */
     public String getFailedTestCasesAsString() {
         return String.join("\n", failedTestCases);
+    }
+    
+    public String getErrorTestCasesAsString() {
+        return String.join("\n", errorTestCases);
+    }
+    
+    public String getSkippedTestCasesAsString() {
+        return String.join("\n", skippedTestCases);
     }
     
     public String getRemovedTestCasesAsString() {

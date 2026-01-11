@@ -270,11 +270,15 @@ public class MavenCommandExecutor {
         
         // 別の形式: testMethod(com.example.TestClass) の形式（旧形式との互換性のため残す）
         Pattern failedTestPattern2 = Pattern.compile("^\\s*(\\S+)\\(([^)]+)\\).*?(?:<<< FAILURE!|<<< ERROR!)");
+        
+        // WARNINGメッセージからSkippedテストを検出するパターン
+        // 例: [WARNING] Tests run: 1, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0.035 s - in org.jenkinsci.plugins.api.GihubAPITest
+        Pattern skippedTestPattern = Pattern.compile("^\\[WARNING\\]\\s+Tests run:.*Skipped: \\d+.*- in (.+)$");
 
         String line;
         while ((line = reader.readLine()) != null) {
             // テスト関連のログを出力
-            if (line.contains("[INFO]") || line.contains("[ERROR]") || 
+            if (line.contains("[INFO]") || line.contains("[ERROR]") || line.contains("[WARNING]") ||
                 line.contains("Tests run:") || line.contains("BUILD SUCCESS") || 
                 line.contains("BUILD FAILURE") || line.contains("Running ") ||
                 line.contains("FAILURE!") || line.contains("ERROR!")) {
@@ -300,10 +304,14 @@ public class MavenCommandExecutor {
             Matcher failedTestMatcher1 = failedTestPattern1.matcher(line);
             if (failedTestMatcher1.find()) {
                 String testCase = failedTestMatcher1.group(1);
-                // 既に追加されていない場合のみ追加
-                if (!metrics.getFailedTestCases().contains(testCase)) {
+                
+                // FAILURE または ERROR を判定
+                if (line.contains("<<< FAILURE!")) {
                     metrics.addFailedTestCase(testCase);
                     System.out.println("Failed test detected: " + testCase);
+                } else if (line.contains("<<< ERROR!")) {
+                    metrics.addErrorTestCase(testCase);
+                    System.out.println("Error test detected: " + testCase);
                 }
                 continue;
             }
@@ -314,10 +322,23 @@ public class MavenCommandExecutor {
                 String testMethod = failedTestMatcher2.group(1);
                 String testClass = failedTestMatcher2.group(2);
                 String testCase = testClass + "." + testMethod;
-                if (!metrics.getFailedTestCases().contains(testCase)) {
+                
+                if (line.contains("<<< FAILURE!")) {
                     metrics.addFailedTestCase(testCase);
                     System.out.println("Failed test detected: " + testCase);
+                } else if (line.contains("<<< ERROR!")) {
+                    metrics.addErrorTestCase(testCase);
+                    System.out.println("Error test detected: " + testCase);
                 }
+                continue;
+            }
+            
+            // スキップされたテストケースのチェック
+            Matcher skippedTestMatcher = skippedTestPattern.matcher(line);
+            if (skippedTestMatcher.find()) {
+                String testClass = skippedTestMatcher.group(1);
+                metrics.addSkippedTestCase(testClass);
+                System.out.println("Skipped test detected: " + testClass);
             }
         }
 
