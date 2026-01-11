@@ -83,8 +83,12 @@ public class CsvWriter {
                "Total Iteration," +
                "Main Code Total Lines," +
                "Test Code Total Lines," +
+               "Total Lines," +
                "Main Code Deleted Lines," +
                "Test Code Deleted Lines," +
+               "Main Code After Processing Lines," +
+               "Test Code After Processing Lines," +
+               "Total After Processing Lines," +
                "Modified Main Files Count," +
                "Modified Test Files Count," +
                "Removed Testcase," +
@@ -110,13 +114,23 @@ public class CsvWriter {
      * @return CSV行
      */
     private static String toCSVLine(FixMetrics metrics) {
+        // 加工後の行数を計算
+        int mainCodeAfterProcessing = metrics.getMainCodeTotalLines() - metrics.getMainCodeDeletedLines();
+        int testCodeAfterProcessing = metrics.getTestCodeTotalLines() - metrics.getTestCodeDeletedLines();
+        int totalLines = metrics.getMainCodeTotalLines() + metrics.getTestCodeTotalLines();
+        int totalAfterProcessing = mainCodeAfterProcessing + testCodeAfterProcessing;
+        
         return metrics.getMainCodeIteration() + "," +
                metrics.getTestCodeIteration() + "," +
                metrics.getTotalIteration() + "," +
                metrics.getMainCodeTotalLines() + "," +
                metrics.getTestCodeTotalLines() + "," +
+               totalLines + "," +
                metrics.getMainCodeDeletedLines() + "," +
                metrics.getTestCodeDeletedLines() + "," +
+               mainCodeAfterProcessing + "," +
+               testCodeAfterProcessing + "," +
+               totalAfterProcessing + "," +
                metrics.getMainCodeModifiedFiles() + "," +
                metrics.getTestCodeModifiedFiles() + "," +
                metrics.getRemovedTestMethods() + "," +
