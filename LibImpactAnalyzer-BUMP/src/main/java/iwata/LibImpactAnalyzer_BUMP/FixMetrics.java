@@ -79,6 +79,30 @@ public class FixMetrics {
     /** 修正を行ったテストコードファイル名のリスト */
     private List<String> modifiedTestFiles;
     
+    /** ビルド成果物の情報リスト (ファイル名 -> サイズ) */
+    private List<ArtifactInfo> artifactInfoList;
+    
+    /**
+     * ビルド成果物の情報を保持する内部クラス
+     */
+    public static class ArtifactInfo {
+        private String fileName;
+        private long sizeInBytes;
+        
+        public ArtifactInfo(String fileName, long sizeInBytes) {
+            this.fileName = fileName;
+            this.sizeInBytes = sizeInBytes;
+        }
+        
+        public String getFileName() {
+            return fileName;
+        }
+        
+        public long getSizeInBytes() {
+            return sizeInBytes;
+        }
+    }
+    
     /**
      * コンストラクタ
      */
@@ -89,6 +113,7 @@ public class FixMetrics {
         this.removedTestCases = new ArrayList<>();
         this.modifiedMainFiles = new ArrayList<>();
         this.modifiedTestFiles = new ArrayList<>();
+        this.artifactInfoList = new ArrayList<>();
     }
     
     // ===== Getters and Setters =====
@@ -309,6 +334,14 @@ public class FixMetrics {
         }
     }
     
+    public List<ArtifactInfo> getArtifactInfoList() {
+        return artifactInfoList;
+    }
+    
+    public void addArtifactInfo(String fileName, long sizeInBytes) {
+        this.artifactInfoList.add(new ArtifactInfo(fileName, sizeInBytes));
+    }
+    
     /**
      * リストを改行区切りの文字列に変換
      */
@@ -334,5 +367,36 @@ public class FixMetrics {
     
     public String getModifiedTestFilesAsString() {
         return String.join("\n", modifiedTestFiles);
+    }
+    
+    /**
+     * ビルド成果物情報を文字列に変換
+     * 形式: "ファイル名1:サイズ1\nファイル名2:サイズ2\n..."
+     */
+    public String getArtifactInfoAsString() {
+        if (artifactInfoList.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < artifactInfoList.size(); i++) {
+            ArtifactInfo info = artifactInfoList.get(i);
+            sb.append(info.getFileName()).append(":").append(info.getSizeInBytes());
+            if (i < artifactInfoList.size() - 1) {
+                sb.append("\n");
+            }
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * ビルド成果物の総サイズを取得
+     */
+    public long getTotalArtifactSize() {
+        long total = 0;
+        for (ArtifactInfo info : artifactInfoList) {
+            total += info.getSizeInBytes();
+        }
+        return total;
     }
 }

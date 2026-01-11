@@ -10,7 +10,8 @@ import java.util.*;
  * 1. フェーズ1: メインコード(srcディレクトリ)のコンパイルエラーを自動修正
  * 2. フェーズ2: テストコード(testsディレクトリ)のコンパイルエラーを自動修正
  * 3. テスト実行とメトリクス収集
- * 4. CSV出力
+ * 4. ビルド実行とビルド成果物のサイズ取得
+ * 5. CSV出力
  * 
  * 各フェーズでは最大MAX_ITERATIONS回まで繰り返し修正を試みる
  * マルチモジュールプロジェクトにも対応
@@ -152,13 +153,18 @@ public class CompilationErrorAutoFixer {
         testExecutionStartTime = System.currentTimeMillis();
         
         // テストコード修正中に記録した削除テストケース情報を使用
-        // （fixTestCodeErrorsで作成されたtempMetricsは直接アクセスできないので、
-        //  クラス変数として保持するか、戻り値で返す必要がある）
-        // ここでは新しいtempMetricsを作成（fixTestCodeErrorsを修正して戻り値で返すようにする）
         FixMetrics finalMetrics = collectFinalMetrics(testCodeTempMetrics);
         long testExecutionEndTime = System.currentTimeMillis();
         double testExecutionTime = (testExecutionEndTime - testExecutionStartTime) / 1000.0;
         System.out.println("Test execution time: " + String.format("%.2f", testExecutionTime) + " seconds");
+        
+        // 両方のコンパイルが成功した場合、ビルドを実行
+        boolean buildSuccess = false;
+        boolean overallSuccess = mainCodeBuildSuccess && testCodeBuildSuccess;
+        
+        if (overallSuccess) {
+            buildSuccess = commandExecutor.buildPackage(finalMetrics);
+        }
         
         // プログラム終了時刻を記録し、全体の実行時間を計算
         long programEndTime = System.currentTimeMillis();
@@ -184,7 +190,6 @@ public class CompilationErrorAutoFixer {
         // 最終結果の判定とディレクトリ移動
         // イテレーション上限到達の判定
         boolean iterationLimitReached = mainCodeReachedMaxIterations || testCodeReachedMaxIterations;
-        boolean overallSuccess = mainCodeBuildSuccess && testCodeBuildSuccess;
         
         if (iterationLimitReached) {
             System.out.println("\n===== ITERATION LIMIT REACHED =====");
@@ -198,6 +203,12 @@ public class CompilationErrorAutoFixer {
         } else if (overallSuccess) {
             System.out.println("\n===== BUILD SUCCESS: Both Main and Test Code Compiled Successfully =====");
             moveToResultDirectory("success");
+            
+            // ビルド成果物のサイズ取得に成功した場合、artifact_size_successにもコピー
+            if (buildSuccess && !finalMetrics.getArtifactInfoList().isEmpty()) {
+                System.out.println("Artifact size collection successful. Copying to artifact_size_success directory...");
+                copyToResultDirectory("artifact_size_success");
+            }
         } else {
             System.out.println("\n===== BUILD FAILURE: Compilation Failed =====");
             if (!mainCodeBuildSuccess) {
@@ -271,6 +282,53 @@ public class CompilationErrorAutoFixer {
     }
     
     /**
+     * SHA名ディレクトリを追加の結果ディレクトリにコピー
+     * （successディレクトリに移動済みのものをartifact_size_successにもコピー）
+     * @param resultType "artifact_size_success"
+     */
+    private void copyToResultDirectory(String resultType) {
+        try {
+            if (ApplicationConfig.SHA == null || ApplicationConfig.SHA.isEmpty()) {
+                System.out.println("警告: SHAが設定されていないため、ディレクトリコピーをスキップします");
+                return;
+            }
+            
+            // コピー元: /output/result/success/SHA
+            File resultBaseDir = new File(ApplicationConfig.OUTPUT_DIR, "result");
+            File successDir = new File(resultBaseDir, "success");
+            File sourceDir = new File(successDir, ApplicationConfig.SHA);
+            
+            // コピー先: /output/result/artifact_size_success/SHA
+            File resultTypeDir = new File(resultBaseDir, resultType);
+            File destinationDir = new File(resultTypeDir, ApplicationConfig.SHA);
+            
+            // result/artifact_size_success ディレクトリを作成
+            if (!resultTypeDir.exists()) {
+                resultTypeDir.mkdirs();
+                System.out.println("結果ディレクトリを作成: " + resultTypeDir.getAbsolutePath());
+            }
+            
+            // ソースディレクトリが存在する場合のみコピー
+            if (sourceDir.exists()) {
+                // コピー先に既に存在する場合は削除
+                if (destinationDir.exists()) {
+                    deleteDirectory(destinationDir);
+                }
+                
+                // ディレクトリをコピー
+                copyDirectory(sourceDir, destinationDir);
+                System.out.println("結果ディレクトリにコピー: " + destinationDir.getAbsolutePath());
+            } else {
+                System.out.println("警告: コピー元ディレクトリが存在しません: " + sourceDir.getAbsolutePath());
+            }
+            
+        } catch (Exception e) {
+            System.err.println("ディレクトリコピー中にエラーが発生しました: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
      * ディレクトリを再帰的に削除
      * @param directory 削除対象のディレクトリ
      */
@@ -284,6 +342,36 @@ public class CompilationErrorAutoFixer {
             }
         }
         directory.delete();
+    }
+    
+    /**
+     * ディレクトリを再帰的にコピー
+     * @param source コピー元ディレクトリ
+     * @param destination コピー先ディレクトリ
+     * @throws Exception コピー中のエラー
+     */
+    private void copyDirectory(File source, File destination) throws Exception {
+        if (source.isDirectory()) {
+            // ディレクトリの場合
+            if (!destination.exists()) {
+                destination.mkdirs();
+            }
+            
+            File[] files = source.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    File destFile = new File(destination, file.getName());
+                    copyDirectory(file, destFile);
+                }
+            }
+        } else {
+            // ファイルの場合
+            java.nio.file.Files.copy(
+                source.toPath(), 
+                destination.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+            );
+        }
     }
     
     /**

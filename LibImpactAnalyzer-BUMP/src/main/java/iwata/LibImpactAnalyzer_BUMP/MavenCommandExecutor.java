@@ -345,4 +345,111 @@ public class MavenCommandExecutor {
         // プロセスの終了を待機
         process.waitFor();
     }
+    
+    /**
+     * ビルドを実行してビルド成果物を生成
+     * "mvn package -DskipTests" コマンドを実行
+     * 
+     * @param metrics ビルド成果物の情報を格納するメトリクスオブジェクト
+     * @return ビルドが成功した場合true
+     * @throws Exception ビルド実行時のエラー
+     */
+    public boolean buildPackage(FixMetrics metrics) throws Exception {
+        System.out.println("\n===== Building Package =====");
+        
+        // Mavenパッケージコマンドを構築（テストはスキップ）
+        ProcessBuilder pb = new ProcessBuilder(ApplicationConfig.getMavenCmd(), "package", "-DskipTests");
+        pb.directory(new File(ApplicationConfig.PROJECT_DIR));
+        pb.redirectErrorStream(true);
+
+        // プロセスを開始
+        Process process = pb.start();
+        BufferedReader reader = new BufferedReader(
+            new InputStreamReader(process.getInputStream(), "MS932")
+        );
+
+        boolean buildSuccess = false;
+        
+        // ビルド出力を1行ずつ読み込んで解析
+        String line;
+        while ((line = reader.readLine()) != null) {
+            // ビルド関連のログを出力
+            if (line.contains("[INFO]") || line.contains("[ERROR]") || 
+                line.contains("BUILD SUCCESS") || line.contains("BUILD FAILURE")) {
+                System.out.println(line);
+            }
+            
+            // BUILD SUCCESSのチェック
+            if (line.contains("BUILD SUCCESS")) {
+                buildSuccess = true;
+            }
+        }
+        
+        // プロセスの終了を待機
+        int exitCode = process.waitFor();
+        
+        if (buildSuccess && exitCode == 0) {
+            System.out.println("Build successful. Collecting artifact information...");
+            collectArtifactInfo(metrics);
+            return true;
+        } else {
+            System.out.println("Build failed.");
+            return false;
+        }
+    }
+    
+    /**
+     * ビルド成果物の情報を収集
+     * targetディレクトリからjar, war, earファイルを検索してサイズを取得
+     * 
+     * @param metrics ビルド成果物の情報を格納するメトリクスオブジェクト
+     */
+    private void collectArtifactInfo(FixMetrics metrics) {
+        List<File> targetDirs = new ArrayList<>();
+        
+        // シングルモジュールの場合
+        if (!ApplicationConfig.isMultiModule()) {
+            File targetDir = new File(ApplicationConfig.PROJECT_DIR, "target");
+            if (targetDir.exists() && targetDir.isDirectory()) {
+                targetDirs.add(targetDir);
+            }
+        } else {
+            // マルチモジュールの場合、各モジュールのtargetディレクトリを追加
+            for (ModuleInfo module : ApplicationConfig.getModules()) {
+                File targetDir = new File(module.getModuleDir(), "target");
+                if (targetDir.exists() && targetDir.isDirectory()) {
+                    targetDirs.add(targetDir);
+                }
+            }
+        }
+        
+        // 各targetディレクトリからjar, war, earファイルを検索
+        for (File targetDir : targetDirs) {
+            File[] files = targetDir.listFiles(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    String lowerName = name.toLowerCase();
+                    return (lowerName.endsWith(".jar") || 
+                            lowerName.endsWith(".war") || 
+                            lowerName.endsWith(".ear")) &&
+                           !lowerName.contains("sources") &&
+                           !lowerName.contains("javadoc");
+                }
+            });
+            
+            if (files != null) {
+                for (File file : files) {
+                    long size = file.length();
+                    metrics.addArtifactInfo(file.getName(), size);
+                    System.out.println("Artifact found: " + file.getName() + " (" + size + " bytes)");
+                }
+            }
+        }
+        
+        if (metrics.getArtifactInfoList().isEmpty()) {
+            System.out.println("No artifacts found in target directories.");
+        } else {
+            System.out.println("Total artifact size: " + metrics.getTotalArtifactSize() + " bytes");
+        }
+    }
 }
