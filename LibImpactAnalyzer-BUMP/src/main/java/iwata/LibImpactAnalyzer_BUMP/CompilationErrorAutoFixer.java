@@ -74,6 +74,12 @@ public class CompilationErrorAutoFixer {
     /** テストコード修正時の削除テストケースを記録するメトリクス */
     private FixMetrics testCodeTempMetrics;
     
+    /** メインコードが最大イテレーションに到達したかどうか */
+    private boolean mainCodeReachedMaxIterations = false;
+    
+    /** テストコードが最大イテレーションに到達したかどうか */
+    private boolean testCodeReachedMaxIterations = false;
+    
     /**
      * コンストラクタ
      * 必要なコンポーネントを初期化
@@ -176,9 +182,20 @@ public class CompilationErrorAutoFixer {
         CsvWriter.writeMetrics(finalMetricsList);
         
         // 最終結果の判定とディレクトリ移動
+        // イテレーション上限到達の判定
+        boolean iterationLimitReached = mainCodeReachedMaxIterations || testCodeReachedMaxIterations;
         boolean overallSuccess = mainCodeBuildSuccess && testCodeBuildSuccess;
         
-        if (overallSuccess) {
+        if (iterationLimitReached) {
+            System.out.println("\n===== ITERATION LIMIT REACHED =====");
+            if (mainCodeReachedMaxIterations) {
+                System.out.println("Main code reached maximum iterations (" + ApplicationConfig.MAX_ITERATIONS + ")");
+            }
+            if (testCodeReachedMaxIterations) {
+                System.out.println("Test code reached maximum iterations (" + ApplicationConfig.MAX_ITERATIONS + ")");
+            }
+            moveToResultDirectory("iteration_limit_reached");
+        } else if (overallSuccess) {
             System.out.println("\n===== BUILD SUCCESS: Both Main and Test Code Compiled Successfully =====");
             moveToResultDirectory("success");
         } else {
@@ -202,7 +219,7 @@ public class CompilationErrorAutoFixer {
     
     /**
      * SHA名ディレクトリを成功/失敗のresultディレクトリに移動
-     * @param resultType "success" または "failure"
+     * @param resultType "success"、"failure"、または "iteration_limit_reached"
      */
     private void moveToResultDirectory(String resultType) {
         try {
@@ -214,12 +231,13 @@ public class CompilationErrorAutoFixer {
             // 移動元: /output/SHA
             File sourceDir = new File(ApplicationConfig.OUTPUT_DIR, ApplicationConfig.SHA);
             
-            // 移動先: /output/result/success/SHA または /output/result/failure/SHA
+            // 移動先: /output/result/success/SHA、/output/result/failure/SHA、
+            //        または /output/result/iteration_limit_reached/SHA
             File resultBaseDir = new File(ApplicationConfig.OUTPUT_DIR, "result");
             File resultTypeDir = new File(resultBaseDir, resultType);
             File destinationDir = new File(resultTypeDir, ApplicationConfig.SHA);
             
-            // result/success または result/failure ディレクトリを作成
+            // result/success、result/failure、または result/iteration_limit_reached ディレクトリを作成
             if (!resultTypeDir.exists()) {
                 resultTypeDir.mkdirs();
                 System.out.println("結果ディレクトリを作成: " + resultTypeDir.getAbsolutePath());
@@ -348,6 +366,11 @@ public class CompilationErrorAutoFixer {
             iteration++;
         }
         
+        // 最大イテレーションに到達したかをチェック
+        if (iteration > ApplicationConfig.MAX_ITERATIONS && !success) {
+            mainCodeReachedMaxIterations = true;
+        }
+        
         return success;
     }
     
@@ -433,6 +456,11 @@ public class CompilationErrorAutoFixer {
             }
 
             iteration++;
+        }
+        
+        // 最大イテレーションに到達したかをチェック
+        if (iteration > ApplicationConfig.MAX_ITERATIONS && !success) {
+            testCodeReachedMaxIterations = true;
         }
         
         return success;
