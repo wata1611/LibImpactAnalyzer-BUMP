@@ -100,6 +100,10 @@ public class CsvWriter {
                "Test Code Fix Time (seconds)," +
                "Test Execution Time (seconds)," +
                "Total Execution Time (seconds)," +
+               "Main Code Compile Times Per Loop (seconds)," +
+               "Main Code Fix Times Per Loop (seconds)," +
+               "Test Code Compile Times Per Loop (seconds)," +
+               "Test Code Fix Times Per Loop (seconds)," +
                "Artifact Info," +
                "Total Artifact Size (bytes)," +
                "Failed Test Cases," +
@@ -144,6 +148,10 @@ public class CsvWriter {
                String.format("%.2f", metrics.getTestCodeFixTime()) + "," +
                String.format("%.2f", metrics.getTestExecutionTime()) + "," +
                String.format("%.2f", metrics.getExecutionTime()) + "," +
+               escapeCSV(metrics.getMainCodeCompileTimesAsString()) + "," +
+               escapeCSV(metrics.getMainCodeFixTimesPerLoopAsString()) + "," +
+               escapeCSV(metrics.getTestCodeCompileTimesAsString()) + "," +
+               escapeCSV(metrics.getTestCodeFixTimesPerLoopAsString()) + "," +
                escapeCSV(metrics.getArtifactInfoAsString()) + "," +
                metrics.getTotalArtifactSize() + "," +
                escapeCSV(metrics.getFailedTestCasesAsString()) + "," +

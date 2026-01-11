@@ -82,6 +82,18 @@ public class FixMetrics {
     /** ビルド成果物の情報リスト (ファイル名 -> サイズ) */
     private List<ArtifactInfo> artifactInfoList;
     
+    /** ループ毎のメインコードコンパイル時間（秒） */
+    private List<Double> mainCodeCompileTimesPerLoop;
+    
+    /** ループ毎のメインコード修正時間（秒） */
+    private List<Double> mainCodeFixTimesPerLoop;
+    
+    /** ループ毎のテストコードコンパイル時間（秒） */
+    private List<Double> testCodeCompileTimesPerLoop;
+    
+    /** ループ毎のテストコード修正時間（秒） */
+    private List<Double> testCodeFixTimesPerLoop;
+    
     /**
      * ビルド成果物の情報を保持する内部クラス
      */
@@ -114,6 +126,10 @@ public class FixMetrics {
         this.modifiedMainFiles = new ArrayList<>();
         this.modifiedTestFiles = new ArrayList<>();
         this.artifactInfoList = new ArrayList<>();
+        this.mainCodeCompileTimesPerLoop = new ArrayList<>();
+        this.mainCodeFixTimesPerLoop = new ArrayList<>();
+        this.testCodeCompileTimesPerLoop = new ArrayList<>();
+        this.testCodeFixTimesPerLoop = new ArrayList<>();
     }
     
     // ===== Getters and Setters =====
@@ -342,6 +358,38 @@ public class FixMetrics {
         this.artifactInfoList.add(new ArtifactInfo(fileName, sizeInBytes));
     }
     
+    public List<Double> getMainCodeCompileTimesPerLoop() {
+        return mainCodeCompileTimesPerLoop;
+    }
+    
+    public void addMainCodeCompileTime(double time) {
+        this.mainCodeCompileTimesPerLoop.add(time);
+    }
+    
+    public List<Double> getMainCodeFixTimesPerLoop() {
+        return mainCodeFixTimesPerLoop;
+    }
+    
+    public void addMainCodeFixTimePerLoop(double time) {
+        this.mainCodeFixTimesPerLoop.add(time);
+    }
+    
+    public List<Double> getTestCodeCompileTimesPerLoop() {
+        return testCodeCompileTimesPerLoop;
+    }
+    
+    public void addTestCodeCompileTime(double time) {
+        this.testCodeCompileTimesPerLoop.add(time);
+    }
+    
+    public List<Double> getTestCodeFixTimesPerLoop() {
+        return testCodeFixTimesPerLoop;
+    }
+    
+    public void addTestCodeFixTimePerLoop(double time) {
+        this.testCodeFixTimesPerLoop.add(time);
+    }
+    
     /**
      * リストを改行区切りの文字列に変換
      */
@@ -398,5 +446,40 @@ public class FixMetrics {
             total += info.getSizeInBytes();
         }
         return total;
+    }
+    
+    /**
+     * 時間リストを文字列に変換
+     * 形式: "0.12,0.34,0.56"
+     */
+    private String formatTimeList(List<Double> times) {
+        if (times.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < times.size(); i++) {
+            sb.append(String.format("%.2f", times.get(i)));
+            if (i < times.size() - 1) {
+                sb.append(",");
+            }
+        }
+        return sb.toString();
+    }
+    
+    public String getMainCodeCompileTimesAsString() {
+        return formatTimeList(mainCodeCompileTimesPerLoop);
+    }
+    
+    public String getMainCodeFixTimesPerLoopAsString() {
+        return formatTimeList(mainCodeFixTimesPerLoop);
+    }
+    
+    public String getTestCodeCompileTimesAsString() {
+        return formatTimeList(testCodeCompileTimesPerLoop);
+    }
+    
+    public String getTestCodeFixTimesPerLoopAsString() {
+        return formatTimeList(testCodeFixTimesPerLoop);
     }
 }

@@ -81,6 +81,9 @@ public class CompilationErrorAutoFixer {
     /** テストコードが最大イテレーションに到達したかどうか */
     private boolean testCodeReachedMaxIterations = false;
     
+    /** 最終メトリクス（ループ毎の時間を記録するため） */
+    private FixMetrics finalMetrics;
+    
     /**
      * コンストラクタ
      * 必要なコンポーネントを初期化
@@ -98,6 +101,7 @@ public class CompilationErrorAutoFixer {
         this.totalTestDeletedLines = 0;
         this.totalRemovedTestMethods = 0;
         this.currentLoopNumber = 0;
+        this.finalMetrics = new FixMetrics();
     }
     
     /**
@@ -153,7 +157,7 @@ public class CompilationErrorAutoFixer {
         testExecutionStartTime = System.currentTimeMillis();
         
         // テストコード修正中に記録した削除テストケース情報を使用
-        FixMetrics finalMetrics = collectFinalMetrics(testCodeTempMetrics);
+        collectFinalMetrics(testCodeTempMetrics);
         long testExecutionEndTime = System.currentTimeMillis();
         double testExecutionTime = (testExecutionEndTime - testExecutionStartTime) / 1000.0;
         System.out.println("Test execution time: " + String.format("%.2f", testExecutionTime) + " seconds");
@@ -397,9 +401,16 @@ public class CompilationErrorAutoFixer {
             // 反復開始時のメインコード総行数を記録
             int mainCodeTotalLines = LineCounter.countTotalLines(ApplicationConfig.getAllSrcDirs());
 
+            // コンパイル開始時刻
+            long compileStartTime = System.currentTimeMillis();
+            
             // メインコードをコンパイルしてエラーを抽出
             CompilationResult result = commandExecutor.compileMainCode();
             Map<String, CompilationError> mainErrorFiles = result.getErrorFiles();
+            
+            // コンパイル終了時刻
+            long compileEndTime = System.currentTimeMillis();
+            double compileTime = (compileEndTime - compileStartTime) / 1000.0;
             
             // ビルド成功フラグを更新
             if (result.isBuildSuccess()) {
@@ -409,12 +420,19 @@ public class CompilationErrorAutoFixer {
             // エラーがなければ成功
             if (mainErrorFiles.isEmpty()) {
                 System.out.println("Main code compilation successful (Loop: " + iteration + ", Global Loop: " + currentLoopNumber + ")");
+                // コンパイル時間を記録
+                finalMetrics.addMainCodeCompileTime(compileTime);
+                // 修正時間は0秒
+                finalMetrics.addMainCodeFixTimePerLoop(0.0);
                 success = true;
                 break;
             }
 
             // エラーファイル数を表示
             System.out.println("Error files: " + mainErrorFiles.size());
+
+            // 修正開始時刻
+            long fixStartTime = System.currentTimeMillis();
 
             // メトリクス収集用の変数
             int mainCodeDeletedLines = 0;
@@ -440,6 +458,14 @@ public class CompilationErrorAutoFixer {
                     modifiedMainFiles.add(compilationError.getFileName());
                 }
             }
+
+            // 修正終了時刻
+            long fixEndTime = System.currentTimeMillis();
+            double fixTime = (fixEndTime - fixStartTime) / 1000.0;
+            
+            // ループ毎の時間を記録
+            finalMetrics.addMainCodeCompileTime(compileTime);
+            finalMetrics.addMainCodeFixTimePerLoop(fixTime);
 
             // 累積データを更新
             totalMainDeletedLines += mainCodeDeletedLines;
@@ -488,9 +514,16 @@ public class CompilationErrorAutoFixer {
             // 反復開始時のテストコード総行数を記録
             int testCodeTotalLines = LineCounter.countTotalLines(ApplicationConfig.getAllTestDirs());
 
+            // コンパイル開始時刻
+            long compileStartTime = System.currentTimeMillis();
+            
             // テストコードをコンパイルしてエラーを抽出
             CompilationResult result = commandExecutor.compileTestCode();
             Map<String, CompilationError> testErrorFiles = result.getErrorFiles();
+            
+            // コンパイル終了時刻
+            long compileEndTime = System.currentTimeMillis();
+            double compileTime = (compileEndTime - compileStartTime) / 1000.0;
             
             // ビルド成功フラグを更新
             if (result.isBuildSuccess()) {
@@ -500,12 +533,19 @@ public class CompilationErrorAutoFixer {
             // エラーがなければ成功
             if (testErrorFiles.isEmpty()) {
                 System.out.println("Test code compilation successful (Loop: " + iteration + ", Global Loop: " + currentLoopNumber + ")");
+                // コンパイル時間を記録
+                finalMetrics.addTestCodeCompileTime(compileTime);
+                // 修正時間は0秒
+                finalMetrics.addTestCodeFixTimePerLoop(0.0);
                 success = true;
                 break;
             }
 
             // エラーファイル数を表示
             System.out.println("Error files: " + testErrorFiles.size());
+
+            // 修正開始時刻
+            long fixStartTime = System.currentTimeMillis();
 
             // メトリクス収集用の変数
             int testCodeDeletedLines = 0;
@@ -531,6 +571,14 @@ public class CompilationErrorAutoFixer {
                 }
                 removedTestMethods += removedMethods;
             }
+
+            // 修正終了時刻
+            long fixEndTime = System.currentTimeMillis();
+            double fixTime = (fixEndTime - fixStartTime) / 1000.0;
+            
+            // ループ毎の時間を記録
+            finalMetrics.addTestCodeCompileTime(compileTime);
+            finalMetrics.addTestCodeFixTimePerLoop(fixTime);
 
             // 累積データを更新
             totalTestDeletedLines += testCodeDeletedLines;
@@ -558,12 +606,9 @@ public class CompilationErrorAutoFixer {
      * 最終的なメトリクスを収集(テスト実行結果を含む)
      * 注: 実行時間はrun()メソッドで後から設定される
      * @param tempMetrics テストコード修正中に記録された削除テストケース情報
-     * @return 最終メトリクス
      * @throws Exception テスト実行時のエラー
      */
-    private FixMetrics collectFinalMetrics(FixMetrics tempMetrics) throws Exception {
-        FixMetrics finalMetrics = new FixMetrics();
-        
+    private void collectFinalMetrics(FixMetrics tempMetrics) throws Exception {
         // 総反復回数を計算して記録
         totalIterations = mainCodeIterations + testCodeIterations;
         finalMetrics.setMainCodeIteration(mainCodeIterations);
@@ -599,7 +644,5 @@ public class CompilationErrorAutoFixer {
         
         // テストを実行してテスト結果を収集
         commandExecutor.runTests(finalMetrics);
-        
-        return finalMetrics;
     }
 }
