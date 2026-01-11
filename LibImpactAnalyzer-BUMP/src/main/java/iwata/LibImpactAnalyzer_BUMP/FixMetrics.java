@@ -64,6 +64,9 @@ public class FixMetrics {
     /** 失敗したテストケース名のリスト */
     private List<String> failedTestCases;
     
+    /** 削除されたテストケース名のリスト */
+    private List<String> removedTestCases;
+    
     /** 修正を行ったメインコードファイル名のリスト */
     private List<String> modifiedMainFiles;
     
@@ -75,6 +78,7 @@ public class FixMetrics {
      */
     public FixMetrics() {
         this.failedTestCases = new ArrayList<>();
+        this.removedTestCases = new ArrayList<>();
         this.modifiedMainFiles = new ArrayList<>();
         this.modifiedTestFiles = new ArrayList<>();
     }
@@ -245,6 +249,16 @@ public class FixMetrics {
         this.failedTestCases.add(testCase);
     }
     
+    public List<String> getRemovedTestCases() {
+        return removedTestCases;
+    }
+    
+    public void addRemovedTestCase(String testCase) {
+        if (!this.removedTestCases.contains(testCase)) {
+            this.removedTestCases.add(testCase);
+        }
+    }
+    
     public List<String> getModifiedMainFiles() {
         return modifiedMainFiles;
     }
@@ -270,6 +284,10 @@ public class FixMetrics {
      */
     public String getFailedTestCasesAsString() {
         return String.join("\n", failedTestCases);
+    }
+    
+    public String getRemovedTestCasesAsString() {
+        return String.join("\n", removedTestCases);
     }
     
     public String getModifiedMainFilesAsString() {

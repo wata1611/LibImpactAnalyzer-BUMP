@@ -33,7 +33,7 @@ public class SourceCodeFixer {
      * @param loopNumber 現在のループ番号
      * @return 修正結果を格納した配列 [削除された行数, 削除されたテストメソッド数]
      */
-    public int[] fixErrorFile(File file, CompilationError compilationError, int loopNumber) {
+    public int[] fixErrorFile(File file, CompilationError compilationError, int loopNumber, FixMetrics metrics) {
         try {
             // ファイル修正開始のヘッダー表示
             System.out.println("\n--- " + compilationError.getFileName() + " の修正処理開始 ---");
@@ -62,7 +62,7 @@ public class SourceCodeFixer {
 
             if (isTestFile) {
                 // テストコードの場合: エラーを含むテストメソッドを削除
-                int[] result = fixTestFile(launcher, model, compilationError);
+                int[] result = fixTestFile(launcher, model, compilationError, file, metrics);
                 int count = result[0];
                 removedTestMethodCount = result[1];
                 if (count > 0) {
@@ -405,7 +405,7 @@ public class SourceCodeFixer {
      * @param compilationError エラー情報
      * @return 修正結果を格納した配列 [削除された要素数, 削除されたテストメソッド数]
      */
-    private int[] fixTestFile(Launcher launcher, CtModel model, CompilationError compilationError) {
+    private int[] fixTestFile(Launcher launcher, CtModel model, CompilationError compilationError, File file, FixMetrics metrics) {
         int modifiedCount = 0;
         int removedTestMethodCount = 0;
         Set<CtMethod<?>> processedMethods = new HashSet<>();  // 処理済みメソッドを追跡
@@ -449,6 +449,17 @@ public class SourceCodeFixer {
                         // テストメソッド全体を削除
                         String methodName = method.getSimpleName();
                         System.out.println("テストメソッドを削除: " + methodName + " (行 " + startLine + "-" + endLine + ")");
+                        
+                        // テストケース名を構築（クラス名.メソッド名）
+                        String className = getClassName(file);
+                        String testCaseName = className + "." + methodName;
+                        
+                        // メトリクスに記録
+                        if (metrics != null) {
+                            metrics.addRemovedTestCase(testCaseName);
+                            System.out.println("Removed test case recorded: " + testCaseName);
+                        }
+                        
                         method.delete();
                         
                         processedMethods.add(method);
@@ -512,6 +523,32 @@ public class SourceCodeFixer {
         
         return false;
     }
+    /**
+     * ファイルからクラス名を取得
+     * @param file ファイル
+     * @return 完全修飾クラス名
+     */
+    private String getClassName(File file) {
+        String fileName = file.getName();
+        String className = fileName.replace(".java", "");
+        
+        // パッケージ名を取得するためファイルを読む
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.startsWith("package ")) {
+                    String packageName = line.substring(8, line.indexOf(';')).trim();
+                    return packageName + "." + className;
+                }
+            }
+        } catch (Exception e) {
+            // パッケージ名が取得できない場合はクラス名のみ返す
+        }
+        
+        return className;
+    }
+
     
     /**
      * エラー行のimport文を削除し、2回以上削除されたimport文も削除してファイルに保存

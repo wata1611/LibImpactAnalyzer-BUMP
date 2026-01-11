@@ -71,6 +71,9 @@ public class CompilationErrorAutoFixer {
     /** テストコードのビルド成功フラグ */
     private boolean testCodeBuildSuccess = false;
     
+    /** テストコード修正時の削除テストケースを記録するメトリクス */
+    private FixMetrics testCodeTempMetrics;
+    
     /**
      * コンストラクタ
      * 必要なコンポーネントを初期化
@@ -141,7 +144,12 @@ public class CompilationErrorAutoFixer {
         // テスト実行とメトリクス収集
         System.out.println("\n===== Running Tests =====");
         testExecutionStartTime = System.currentTimeMillis();
-        FixMetrics finalMetrics = collectFinalMetrics();
+        
+        // テストコード修正中に記録した削除テストケース情報を使用
+        // （fixTestCodeErrorsで作成されたtempMetricsは直接アクセスできないので、
+        //  クラス変数として保持するか、戻り値で返す必要がある）
+        // ここでは新しいtempMetricsを作成（fixTestCodeErrorsを修正して戻り値で返すようにする）
+        FixMetrics finalMetrics = collectFinalMetrics(testCodeTempMetrics);
         long testExecutionEndTime = System.currentTimeMillis();
         double testExecutionTime = (testExecutionEndTime - testExecutionStartTime) / 1000.0;
         System.out.println("Test execution time: " + String.format("%.2f", testExecutionTime) + " seconds");
@@ -305,6 +313,9 @@ public class CompilationErrorAutoFixer {
             // メトリクス収集用の変数
             int mainCodeDeletedLines = 0;
             Set<String> modifiedMainFiles = new HashSet<>();
+            
+            // 一時的なメトリクス（メインコード修正時は削除されたテストケースを記録しない）
+            FixMetrics tempMetrics = new FixMetrics();
 
             // 各エラーファイルに対して修正処理を実行
             for (CompilationError compilationError : mainErrorFiles.values()) {
@@ -316,7 +327,7 @@ public class CompilationErrorAutoFixer {
                 }
 
                 // ファイルを修正（ループ番号を渡す）
-                int[] result_fix = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber);
+                int[] result_fix = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber, tempMetrics);
                 int deletedLines = result_fix[0];
                 if (deletedLines > 0) {
                     mainCodeDeletedLines += deletedLines;
@@ -354,6 +365,9 @@ public class CompilationErrorAutoFixer {
     private boolean fixTestCodeErrors() throws Exception {
         int iteration = 1;
         boolean success = false;
+        
+        // テストコード修正時の削除されたテストケース名を記録するための一時メトリクス
+        testCodeTempMetrics = new FixMetrics();
         
         // 最大反復回数まで繰り返す
         while (iteration <= ApplicationConfig.MAX_ITERATIONS) {
@@ -396,8 +410,8 @@ public class CompilationErrorAutoFixer {
                     continue;
                 }
 
-                // ファイルを修正（ループ番号を渡す）
-                int[] result_fix = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber);
+                // ファイルを修正（ループ番号とメトリクスを渡す）
+                int[] result_fix = sourceCodeFixer.fixErrorFile(file, compilationError, currentLoopNumber, testCodeTempMetrics);
                 int deletedLines = result_fix[0];
                 int removedMethods = result_fix[1];
                 if (deletedLines > 0) {
@@ -427,10 +441,11 @@ public class CompilationErrorAutoFixer {
     /**
      * 最終的なメトリクスを収集(テスト実行結果を含む)
      * 注: 実行時間はrun()メソッドで後から設定される
+     * @param tempMetrics テストコード修正中に記録された削除テストケース情報
      * @return 最終メトリクス
      * @throws Exception テスト実行時のエラー
      */
-    private FixMetrics collectFinalMetrics() throws Exception {
+    private FixMetrics collectFinalMetrics(FixMetrics tempMetrics) throws Exception {
         FixMetrics finalMetrics = new FixMetrics();
         
         // 総反復回数を計算して記録
@@ -459,6 +474,11 @@ public class CompilationErrorAutoFixer {
         }
         for (String fileName : allModifiedTestFiles) {
             finalMetrics.addModifiedTestFile(fileName);
+        }
+        
+        // 削除されたテストケース名を記録
+        for (String testCase : tempMetrics.getRemovedTestCases()) {
+            finalMetrics.addRemovedTestCase(testCase);
         }
         
         // テストを実行してテスト結果を収集

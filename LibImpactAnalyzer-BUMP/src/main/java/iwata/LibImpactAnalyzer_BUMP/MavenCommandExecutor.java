@@ -263,9 +263,13 @@ public class MavenCommandExecutor {
         // 例: Tests run: 10, Failures: 2, Errors: 1, Skipped: 0
         Pattern summaryPattern = Pattern.compile("Tests run: (\\d+), Failures: (\\d+), Errors: (\\d+), Skipped: (\\d+)");
         
-        // 失敗したテストケースを検出する正規表現パターン
-        // 例: testMethod(com.example.TestClass)
-        Pattern failedTestPattern = Pattern.compile("^\\s*(\\S+)\\(([^)]+)\\).*?<<< FAILURE!|<<< ERROR!");
+        // 失敗したテストケースを検出する正規表現パターン（[ERROR]行から抽出）
+        // 例: [ERROR] com.github.knaufk.flink.faker.FlinkFakerIntegrationTest.testFlinkFakerWithComplexTypes  Time elapsed: 4.494 s  <<< ERROR!
+        // 例: [ERROR] com.github.knaufk.flink.faker.FlinkFakerTableSourceFactoryTest.testInvalidExpressionIsInvalid:143
+        Pattern failedTestPattern1 = Pattern.compile("^\\[ERROR\\]\\s+([^\\s:]+(?:\\.[^\\s:]+)+)(?:\\s+Time elapsed:|:).*?(?:<<< FAILURE!|<<< ERROR!|$)");
+        
+        // 別の形式: testMethod(com.example.TestClass) の形式（旧形式との互換性のため残す）
+        Pattern failedTestPattern2 = Pattern.compile("^\\s*(\\S+)\\(([^)]+)\\).*?(?:<<< FAILURE!|<<< ERROR!)");
 
         String line;
         while ((line = reader.readLine()) != null) {
@@ -292,13 +296,28 @@ public class MavenCommandExecutor {
                 metrics.setSkipped(skipped);
             }
             
-            // 失敗したテストケースのチェック
-            Matcher failedTestMatcher = failedTestPattern.matcher(line);
-            if (failedTestMatcher.find()) {
-                String testMethod = failedTestMatcher.group(1);
-                String testClass = failedTestMatcher.group(2);
+            // 失敗したテストケースのチェック（パターン1: [ERROR]行から）
+            Matcher failedTestMatcher1 = failedTestPattern1.matcher(line);
+            if (failedTestMatcher1.find()) {
+                String testCase = failedTestMatcher1.group(1);
+                // 既に追加されていない場合のみ追加
+                if (!metrics.getFailedTestCases().contains(testCase)) {
+                    metrics.addFailedTestCase(testCase);
+                    System.out.println("Failed test detected: " + testCase);
+                }
+                continue;
+            }
+            
+            // 失敗したテストケースのチェック（パターン2: 旧形式）
+            Matcher failedTestMatcher2 = failedTestPattern2.matcher(line);
+            if (failedTestMatcher2.find()) {
+                String testMethod = failedTestMatcher2.group(1);
+                String testClass = failedTestMatcher2.group(2);
                 String testCase = testClass + "." + testMethod;
-                metrics.addFailedTestCase(testCase);
+                if (!metrics.getFailedTestCases().contains(testCase)) {
+                    metrics.addFailedTestCase(testCase);
+                    System.out.println("Failed test detected: " + testCase);
+                }
             }
         }
 

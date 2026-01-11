@@ -97,6 +97,7 @@ public class CsvWriter {
                "Test Execution Time (seconds)," +
                "Total Execution Time (seconds)," +
                "Failed Test Cases," +
+               "Removed Test Cases," +
                "Modified Main Files," +
                "Modified Test Files";
     }
@@ -126,6 +127,7 @@ public class CsvWriter {
                String.format("%.2f", metrics.getTestExecutionTime()) + "," +
                String.format("%.2f", metrics.getExecutionTime()) + "," +
                escapeCSV(metrics.getFailedTestCasesAsString()) + "," +
+               escapeCSV(metrics.getRemovedTestCasesAsString()) + "," +
                escapeCSV(metrics.getModifiedMainFilesAsString()) + "," +
                escapeCSV(metrics.getModifiedTestFilesAsString());
     }
