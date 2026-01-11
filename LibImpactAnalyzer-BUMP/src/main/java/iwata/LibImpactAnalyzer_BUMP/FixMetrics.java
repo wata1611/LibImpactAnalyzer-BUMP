@@ -40,8 +40,17 @@ public class FixMetrics {
     /** Skipped（スキップ数） */
     private int skipped;
     
-    /** 実行時間（秒） */
+    /** 実行時間（秒） - トータル */
     private double executionTime;
+    
+    /** メインコード修正時間（秒） */
+    private double mainCodeFixTime;
+    
+    /** テストコード修正時間（秒） */
+    private double testCodeFixTime;
+    
+    /** テスト実行時間（秒） */
+    private double testExecutionTime;
     
     /** 削除されたテストメソッド数 */
     private int removedTestMethods;
@@ -160,6 +169,30 @@ public class FixMetrics {
     
     public void setExecutionTime(double executionTime) {
         this.executionTime = executionTime;
+    }
+    
+    public double getMainCodeFixTime() {
+        return mainCodeFixTime;
+    }
+    
+    public void setMainCodeFixTime(double mainCodeFixTime) {
+        this.mainCodeFixTime = mainCodeFixTime;
+    }
+    
+    public double getTestCodeFixTime() {
+        return testCodeFixTime;
+    }
+    
+    public void setTestCodeFixTime(double testCodeFixTime) {
+        this.testCodeFixTime = testCodeFixTime;
+    }
+    
+    public double getTestExecutionTime() {
+        return testExecutionTime;
+    }
+    
+    public void setTestExecutionTime(double testExecutionTime) {
+        this.testExecutionTime = testExecutionTime;
     }
     
     public int getRemovedTestMethods() {

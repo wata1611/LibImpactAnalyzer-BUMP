@@ -90,7 +90,10 @@ public class CsvWriter {
                "Failures," +
                "Errors," +
                "Skipped," +
-               "Execution Time (seconds)," +
+               "Main Code Fix Time (seconds)," +
+               "Test Code Fix Time (seconds)," +
+               "Test Execution Time (seconds)," +
+               "Total Execution Time (seconds)," +
                "Failed Test Cases," +
                "Modified Main Files," +
                "Modified Test Files";
@@ -114,6 +117,9 @@ public class CsvWriter {
                metrics.getFailures() + "," +
                metrics.getErrors() + "," +
                metrics.getSkipped() + "," +
+               String.format("%.2f", metrics.getMainCodeFixTime()) + "," +
+               String.format("%.2f", metrics.getTestCodeFixTime()) + "," +
+               String.format("%.2f", metrics.getTestExecutionTime()) + "," +
                String.format("%.2f", metrics.getExecutionTime()) + "," +
                escapeCSV(metrics.getFailedTestCasesAsString()) + "," +
                escapeCSV(metrics.getModifiedMainFilesAsString()) + "," +

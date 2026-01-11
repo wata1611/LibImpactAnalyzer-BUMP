@@ -50,6 +50,15 @@ public class CompilationErrorAutoFixer {
     /** プログラム開始時刻 */
     private long programStartTime;
     
+    /** メインコード修正開始時刻 */
+    private long mainCodeFixStartTime;
+    
+    /** テストコード修正開始時刻 */
+    private long testCodeFixStartTime;
+    
+    /** テスト実行開始時刻 */
+    private long testExecutionStartTime;
+    
     /** メインコードのビルド成功フラグ */
     private boolean mainCodeBuildSuccess = false;
     
@@ -107,22 +116,43 @@ public class CompilationErrorAutoFixer {
         
         // フェーズ1: メインコードの修正
         System.out.println("===== Phase 1: Main Code =====");
+        mainCodeFixStartTime = System.currentTimeMillis();
         boolean mainCodeSuccess = fixMainCodeErrors();
+        long mainCodeFixEndTime = System.currentTimeMillis();
+        double mainCodeFixTime = (mainCodeFixEndTime - mainCodeFixStartTime) / 1000.0;
+        System.out.println("Main code fix time: " + String.format("%.2f", mainCodeFixTime) + " seconds");
         
         // フェーズ2: テストコードの修正
         System.out.println("\n===== Phase 2: Test Code =====");
+        testCodeFixStartTime = System.currentTimeMillis();
         boolean testCodeSuccess = fixTestCodeErrors();
+        long testCodeFixEndTime = System.currentTimeMillis();
+        double testCodeFixTime = (testCodeFixEndTime - testCodeFixStartTime) / 1000.0;
+        System.out.println("Test code fix time: " + String.format("%.2f", testCodeFixTime) + " seconds");
         
         // テスト実行とメトリクス収集
         System.out.println("\n===== Running Tests =====");
+        testExecutionStartTime = System.currentTimeMillis();
         FixMetrics finalMetrics = collectFinalMetrics();
+        long testExecutionEndTime = System.currentTimeMillis();
+        double testExecutionTime = (testExecutionEndTime - testExecutionStartTime) / 1000.0;
+        System.out.println("Test execution time: " + String.format("%.2f", testExecutionTime) + " seconds");
         
         // プログラム終了時刻を記録し、全体の実行時間を計算
         long programEndTime = System.currentTimeMillis();
         double totalExecutionTime = (programEndTime - programStartTime) / 1000.0;
+        
+        // 各時間をメトリクスに設定
+        finalMetrics.setMainCodeFixTime(mainCodeFixTime);
+        finalMetrics.setTestCodeFixTime(testCodeFixTime);
+        finalMetrics.setTestExecutionTime(testExecutionTime);
         finalMetrics.setExecutionTime(totalExecutionTime);
         
-        System.out.println("\nTotal program execution time: " + String.format("%.2f", totalExecutionTime) + " seconds");
+        System.out.println("\n===== Execution Time Summary =====");
+        System.out.println("Main code fix time: " + String.format("%.2f", mainCodeFixTime) + " seconds");
+        System.out.println("Test code fix time: " + String.format("%.2f", testCodeFixTime) + " seconds");
+        System.out.println("Test execution time: " + String.format("%.2f", testExecutionTime) + " seconds");
+        System.out.println("Total execution time: " + String.format("%.2f", totalExecutionTime) + " seconds");
         
         // CSV出力(最終結果のみ)
         List<FixMetrics> finalMetricsList = new ArrayList<>();
