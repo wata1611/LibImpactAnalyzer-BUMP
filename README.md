@@ -1,7 +1,6 @@
+# LibImpactAnalyzer-BUMP
 Java/Maven プロジェクトから外部ライブラリを除去した際の影響を定量的に分析するツール。  
 [BUMP ベンチマーク](https://github.com/chains-project/BUMP) の各コミットに対して、ライブラリ除去がソースコードとテスト結果に与える影響をCSVで出力する。
-
----
 
 ## 概要
 
